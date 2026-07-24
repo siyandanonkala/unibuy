@@ -1814,3 +1814,7 @@ footer{
 .search-section button:hover{
     background:#004d00;
 }
+
+.hidden{
+    display:none;
+}
