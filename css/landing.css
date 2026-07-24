@@ -1,13 +1,17 @@
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap');
 
 :root{
-    --primary:#000;
-    --primary-dark:#111;
-    --gold:#ffffff;
+
+    --primary:#006400;
+    --primary-dark:#004d00;
+    --gold:#FFD700;
     --white:#ffffff;
-    --light:#f5f5f5;
+    --light:#f5f7fa;
     --gray:#777;
     --dark:#222;
+    --shadow:0 10px 30px rgba(0,0,0,.08);
+    --radius:18px;
+    --transition:.35s ease;
 }
 
 *{
@@ -54,7 +58,7 @@ header{
 
     height:75px;
 
-    background:#000;
+    background:#006400;
 
     padding:0 18px;
 
@@ -204,8 +208,9 @@ main{
 
 .search-box input:focus{
 
-    box-shadow:0 
-    
+    box-shadow:0 0 0 3px rgba(0,100,0,.15);
+}
+
 .product-grid{
     display:grid;
     grid-template-columns:repeat(2,1fr);
@@ -298,6 +303,27 @@ main{
 
 .favorite:hover{
     transform:scale(1.1);
+}
+
+.favorite.active{
+    background:#006400;
+    color:#fff;
+}
+
+.page-heading{
+    font-size:22px;
+    color:#111;
+    margin-bottom:20px;
+}
+
+.empty-state{
+    text-align:center;
+    color:#777;
+    font-size:15px;
+    padding:60px 20px;
+    max-width:340px;
+    margin:0 auto;
+    line-height:1.6;
 }
 
 .card-body{
