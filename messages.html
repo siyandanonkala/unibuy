@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Messages - UniBuy</title>
+    <link rel="stylesheet" href="css/app.css">
+    <link rel="stylesheet"
+          href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+</head>
+<body>
+
+<div class="navbar">
+    <button class="menu-btn" onclick="toggleSidebar()">
+        <i class="fas fa-bars"></i>
+    </button>
+    <span class="navbar-brand">UniBuy</span>
+    <span style="width:24px"></span>
+</div>
+
+<aside id="sidebar" class="sidebar">
+    <button class="close-btn" onclick="toggleSidebar()">
+        <i class="fas fa-times"></i>
+    </button>
+
+    <div id="sidebarUser" style="padding:15px 20px;"></div>
+
+    <a href="index.html"><i class="fas fa-home"></i> Home</a>
+    <a href="sell.html"><i class="fas fa-plus-circle"></i> Sell Item</a>
+    <a href="mylistings.html"><i class="fas fa-box"></i> My Listings</a>
+    <a href="messages.html"><i class="fas fa-comments"></i> Messages</a>
+    <a href="saved.html"><i class="fas fa-heart"></i> Saved Items</a>
+    <a href="universities.html"><i class="fas fa-school"></i> Universities</a>
+    <a href="settings.html"><i class="fas fa-cog"></i> Settings</a>
+    <a href="contact.html"><i class="fas fa-envelope"></i> Contact Us</a>
+    <a href="terms.html"><i class="fas fa-file-contract"></i> Terms</a>
+    <a href="login.html" id="loginLink"><i class="fas fa-sign-out-alt"></i> Logout</a>
+</aside>
+
+<h2 class="page-heading">💬 Messages</h2>
+
+<!--
+    Conversation list — this markup is the target shape for real data.
+    Once seller identity is tied to a Firebase Auth uid (see the note
+    in app.js), each item here becomes:
+
+    <a class="conversation-item" href="chat.html?id=CONVERSATION_ID">
+        <div class="conversation-avatar">T</div>
+        <div class="conversation-info">
+            <h3>Thabo M.</h3>
+            <p>Is the laptop still available?</p>
+        </div>
+        <span class="conversation-time">2h</span>
+    </a>
+
+    For now there's nothing to populate it with, so the empty state
+    below is what actually renders.
+-->
+<div class="conversation-list" id="conversationList"></div>
+
+<p class="empty-state" id="messagesEmpty">
+    No conversations yet.<br>
+    Tap "Chat with Seller" on any item to start one — messaging is
+    coming soon.
+</p>
+
+<script src="js/ui.js"></script>
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
