@@ -22,3 +22,26 @@ document.addEventListener("click", function(e){
     }
 
 });
+
+document.addEventListener("DOMContentLoaded", function () {
+
+    const authLink = document.getElementById("authLink");
+    if (!authLink) return;
+
+    const user = localStorage.getItem("loggedInUser");
+
+    if (user) {
+        authLink.innerHTML = '<i class="fas fa-sign-out-alt"></i> Logout';
+        authLink.href = "javascript:void(0)";
+        authLink.onclick = function () {
+            localStorage.removeItem("loggedInUser");
+            localStorage.removeItem("loggedInEmail");
+            alert("Logged out");
+            window.location.href = "index.html";
+        };
+    } else {
+        authLink.innerHTML = '<i class="fas fa-sign-in-alt"></i> Login';
+        authLink.href = "login.html";
+    }
+
+});

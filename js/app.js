@@ -13,18 +13,12 @@ import {
     collection,
     addDoc,
     getDocs,
-    deleteDoc
+    deleteDoc,
+    query,
+    where
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
-const productForm = document.getElementById("productForm");
-const productsContainer = document.querySelector(".products-container");
-
-if (productForm) {
-    productForm.addEventListener("submit", function (e) {
-        e.preventDefault();
-        postProduct();
-    });
-}
+/* ---------- Contact form (contact.html) ---------- */
 
 const contactForm = document.getElementById("contactForm");
 
@@ -68,6 +62,8 @@ async function sendContactMessage() {
     }
 
 }
+
+/* ---------- Auth: register / login / logout ---------- */
 
 function register() {
 
@@ -119,10 +115,14 @@ async function login() {
 
         if (userDoc.exists()) {
 
-            localStorage.setItem(
-                "loggedInUser",
-                userDoc.data().fullname
-            );
+            localStorage.setItem("loggedInUser", userDoc.data().fullname);
+            localStorage.setItem("loggedInEmail", userDoc.data().email || email);
+
+        } else {
+
+            // Fallback: no Firestore profile doc, but auth succeeded.
+            localStorage.setItem("loggedInUser", email);
+            localStorage.setItem("loggedInEmail", email);
 
         }
 
@@ -138,74 +138,69 @@ async function login() {
 
 }
 
-window.onload = function () {
-
-    const user =
-        localStorage.getItem("loggedInUser");
-        const sidebarUser = document.getElementById("sidebarUser");
-
-if (sidebarUser) {
-
-    if (user) {
-
-        sidebarUser.innerHTML = `
-            <h3>👋 ${user}</h3>
-            <p>Welcome back!</p>
-        `;
-
-    } else {
-
-        sidebarUser.innerHTML = `
-            <h3>👤 Guest</h3>
-            <p>Please login</p>
-        `;
-
-    }
-
-}
-
-    if (user) {
-
-        const welcome =
-            document.getElementById("welcomeUser");
-            
-const profileLink =
-    document.getElementById("profileLink");
-
-        if (welcome) {
-            welcome.innerHTML = "👋 " + user;
-        }
-
-        const loginLink =
-            document.getElementById("loginLink");
-
-        if (loginLink) {
-
-            loginLink.innerHTML = "🚪 Logout";
-loginLink.style.color = "#d32f2f";
-loginLink.style.fontWeight = "bold";
-
-loginLink.onclick = function () {
+function logout() {
 
     localStorage.removeItem("loggedInUser");
+    localStorage.removeItem("loggedInEmail");
 
-    alert("Logged out");
+    alert("Logged out successfully.");
 
-    location.reload();
+    window.location.href = "index.html";
 
-};
+}
+
+/* ---------- Sidebar greeting + logout link (every app page) ---------- */
+
+window.addEventListener("load", function () {
+
+    const user = localStorage.getItem("loggedInUser");
+    const sidebarUser = document.getElementById("sidebarUser");
+
+    if (sidebarUser) {
+        sidebarUser.innerHTML = user
+            ? `<h3>👋 ${user}</h3><p>Welcome back!</p>`
+            : `<h3>👤 Guest</h3><p>Please login</p>`;
+    }
+
+    const loginLink = document.getElementById("loginLink");
+
+    if (loginLink) {
+
+        if (user) {
+
+            loginLink.innerHTML = '<i class="fas fa-sign-out-alt"></i> Logout';
+            loginLink.style.color = "#d32f2f";
+            loginLink.style.fontWeight = "bold";
+            loginLink.href = "javascript:void(0)";
+
+            loginLink.onclick = function () {
+                localStorage.removeItem("loggedInUser");
+                localStorage.removeItem("loggedInEmail");
+                alert("Logged out");
+                window.location.href = "index.html";
+            };
+
+        } else {
+
+            loginLink.innerHTML = '<i class="fas fa-sign-in-alt"></i> Login';
+            loginLink.href = "login.html";
+            loginLink.onclick = null;
+
         }
     }
 
-const profileLink = document.getElementById("profileLink");
+});
 
-if (profileLink) {
-    profileLink.style.display = "block";
+/* ---------- Sell Item (sell.html) ---------- */
+
+const productForm = document.getElementById("productForm");
+
+if (productForm) {
+    productForm.addEventListener("submit", function (e) {
+        e.preventDefault();
+        postProduct();
+    });
 }
-    if (document.getElementById("customerProducts")) {
-    loadProducts();
-}
-};
 
 async function postProduct() {
 
@@ -213,52 +208,53 @@ async function postProduct() {
 
     if (!loggedInUser) {
         alert("Please login first");
+        window.location.href = "login.html";
         return;
     }
 
-    const name = document.getElementById("productName").value;
+    const name = document.getElementById("productName").value.trim();
     const price = document.getElementById("productPrice").value;
-    const description = document.getElementById("productDescription").value;
+    const description = document.getElementById("productDescription").value.trim();
     const imageFile = document.getElementById("productImage").files[0];
 
     const categoryField = document.getElementById("productCategory");
     const locationField = document.getElementById("productLocation");
     const category = categoryField ? categoryField.value : "";
-    const location = locationField ? locationField.value : "";
+    const location = locationField ? locationField.value.trim() : "";
 
     if (name === "" || price === "") {
         alert("Please fill all required fields");
         return;
     }
 
-
     const saveProduct = async (imageData) => {
 
-        await addDoc(collection(db, "products"), {
+        try {
+            await addDoc(collection(db, "products"), {
+                name: name,
+                price: Number(price),
+                description: description,
+                category: category,
+                location: location,
+                image: imageData,
+                seller: loggedInUser,
+                likes: 0,
+                createdAt: new Date()
+            });
 
-            name: name,
-            price: Number(price),
-            description: description,
-            category: category,
-            location: location,
-            image: imageData,
-            seller: loggedInUser,
-            likes: 0,
-            createdAt: new Date()
+            alert("Product posted successfully!");
+            window.location.href = "mylistings.html";
 
-        });
-
-        alert("Product posted successfully!");
-
-        location.reload();
+        } catch (error) {
+            alert(error.message);
+        }
     };
-
 
     if (imageFile) {
 
         const reader = new FileReader();
 
-        reader.onload = function(e) {
+        reader.onload = function (e) {
             saveProduct(e.target.result);
         };
 
@@ -272,76 +268,9 @@ async function postProduct() {
 
 }
 
-async function loadProducts() {
+/* ---------- My Listings (mylistings.html) — reads from Firestore,
+   filtered to the logged-in user's own products. ---------- */
 
-   const productList = document.getElementById("customerProducts");
-
-    if (!productList) return;
-
-    productList.innerHTML = ""; 
-
-    try {
-
-        const querySnapshot = await getDocs(collection(db, "products"));
-
-        querySnapshot.forEach((docSnap) => {
-
-            const product = docSnap.data();
-
-            productList.innerHTML += `
-
-            <div class="product-card">
-
-                <h3>${product.name}</h3>
-
-                <p>
-                    <strong>R${product.price}</strong>
-                </p>
-
-                <p>${product.description}</p>
-
-                <small>
-                    Seller: ${product.seller}
-                </small>
-
-                <button onclick="addToCart('${docSnap.id}')">
-                    Add to Cart
-                </button>
-
-            </div>
-
-            `;
-
-        });
-
-
-    } catch(error) {
-
-        console.log(error.message);
-
-    }
-
-}
-
-function openProduct(index) {
-
-    const products =
-        JSON.parse(localStorage.getItem("products")) || [];
-
-    localStorage.setItem(
-        "selectedProduct",
-        JSON.stringify(products[index])
-    );
-
-    window.location.href = "product.html";
-}
-
-/* My Listings (mylistings.html) — reads directly from Firestore,
-   filtered to the logged-in user's own products. Kept separate
-   from loadMyListings()/loadCustomerProducts() above, which read
-   from a localStorage "products" array tied to the store flow —
-   nothing currently populates that array, so this page uses the
-   same Firestore source postProduct() actually writes to. */
 async function loadMyFirestoreListings() {
 
     const container = document.getElementById("myListingsGrid");
@@ -358,15 +287,14 @@ async function loadMyFirestoreListings() {
 
     try {
 
-        const querySnapshot = await getDocs(collection(db, "products"));
+        const q = query(collection(db, "products"), where("seller", "==", loggedInUser));
+        const querySnapshot = await getDocs(q);
         container.innerHTML = "";
         let count = 0;
 
         querySnapshot.forEach((docSnap) => {
 
             const product = docSnap.data();
-            if (product.seller !== loggedInUser) return;
-
             count++;
 
             const placeholder =
@@ -417,354 +345,9 @@ if (document.getElementById("myListingsGrid")) {
     window.addEventListener("load", loadMyFirestoreListings);
 }
 
-window.deleteMyListing = deleteMyListing;
+/* ---------- Settings / Profile (settings.html) ---------- */
 
-function searchProducts() {
-
-    const searchText =
-        document.getElementById("searchInput")
-        .value
-        .toLowerCase();
-
-    const cards =
-        document.querySelectorAll(".product-card");
-
-    cards.forEach(card => {
-
-        const text =
-            card.innerText.toLowerCase();
-
-        if (text.includes(searchText)) {
-            card.style.display = "";
-        } else {
-            card.style.display = "none";
-        }
-    });
-}
-
-/* Sidebar */
-
-function toggleSidebar() {
-
-    const sidebar = document.getElementById("sidebar");
-
-    if (sidebar) {
-        sidebar.classList.toggle("show");
-    }
-
-}
-
-window.toggleSidebar = toggleSidebar;
-
-function loadMyListings() {
-
-    const container =
-        document.getElementById("myListings");
-
-    if (!container) return;
-
-    const loggedInUser =
-        localStorage.getItem("loggedInUser");
-
-    const products =
-        JSON.parse(localStorage.getItem("products")) || [];
-
-    container.innerHTML = "";
-
-    products.forEach(product => {
-
-        if(product.seller === loggedInUser){
-
-            container.innerHTML += `
-
-<div class="product-card">
-
-    <img src="${product.image}">
-
-    <h3>${product.name}</h3>
-
-    <p>
-        <strong>R${product.price}</strong>
-    </p>
-
-    <p>
-        ${product.description}
-    </p>
-
-    <button>
-        Edit
-    </button>
-
-    <button>
-            Delete
-        </button>
-
-    </div>
-
-    `;
-
-        }
-
-    });
-
-}
-    
-function createStore(event){
-
-    event.preventDefault();
-
-    const storeName =
-        document.getElementById("storeNameInput").value;
-
-    const storeDescription =
-        document.getElementById("storeDescriptionInput").value;
-
-    const storeCategory =
-        document.getElementById("storeCategoryInput").value;
-
-    const storeLocation =
-        document.getElementById("storeLocationInput").value;
-
-    const storeContact =
-        document.getElementById("storeContactInput").value;
-
-
-    if(
-        storeName === "" ||
-        storeLocation === "" ||
-        storeContact === ""
-    ){
-        alert("Please fill in all required fields.");
-        return;
-    }
-
-
-    const store = {
-
-        name: storeName,
-
-        description: storeDescription,
-
-        category: storeCategory,
-
-        location: storeLocation,
-
-        contact: storeContact
-
-    };
-
-
-    localStorage.setItem(
-        "store",
-        JSON.stringify(store)
-    );
-
-
-    alert("Store created successfully!");
-
-    window.location.href = "my-store.html";
-
-}
-
-
-
-function loadStore(){
-
-    const store =
-    JSON.parse(localStorage.getItem("store"));
-
-
-    if(!store) return;
-
-
-    const name =
-    document.getElementById("storeName");
-
-
-    if(name){
-
-        name.textContent = store.name;
-
-    }
-
-
-    const location =
-    document.getElementById("storeLocation");
-
-
-    if(location){
-
-        location.textContent = store.location;
-
-    }
-
-
-    const category =
-    document.getElementById("storeCategory");
-
-
-    if(category){
-
-        category.textContent = store.category;
-
-    }
-
-
-    const contact =
-    document.getElementById("storeContact");
-
-
-    if(contact){
-
-        contact.textContent = store.contact;
-
-    }
-
-
-    const description =
-    document.getElementById("storeDescription");
-
-
-    if(description){
-
-        description.textContent = store.description;
-
-    }
-
-
-    loadMyListings();
-
-}
-
-
-
-function loadCustomerStore(){
-
-    const store =
-    JSON.parse(localStorage.getItem("store"));
-
-
-    if(!store) return;
-
-
-    const name =
-    document.getElementById("customerStoreName");
-
-
-    const location =
-    document.getElementById("customerLocation");
-
-
-    const category =
-    document.getElementById("customerCategory");
-
-
-    const description =
-    document.getElementById("customerDescription");
-
-
-    if(name){
-
-        name.textContent = store.name;
-
-    }
-
-
-    if(location){
-
-        location.textContent = store.location;
-
-    }
-
-
-    if(category){
-
-        category.textContent = store.category;
-
-    }
-
-
-    if(description){
-
-        description.textContent = store.description;
-
-    }
-
-
-    loadCustomerProducts();
-
-}
-
-
-
-function loadCustomerProducts(){
-
-    const container =
-    document.getElementById("customerProducts");
-
-
-    if(!container) return;
-
-
-    const store =
-    JSON.parse(localStorage.getItem("store"));
-
-
-    if(!store) return;
-
-
-    const products =
-    JSON.parse(localStorage.getItem("products")) || [];
-
-
-    container.innerHTML = "";
-
-
-    products.forEach((product,index)=>{
-
-
-        if(product.storeName === store.name){
-
-
-            container.innerHTML += `
-
-            <div class="product-card"
-            onclick="openProduct(${index})">
-
-
-                <img src="${product.image}">
-
-
-                <h3>${product.name}</h3>
-
-
-                <p>
-                <strong>R${product.price}</strong>
-                </p>
-
-
-                <p>${product.description}</p>
-
-
-            </div>
-
-            `;
-
-        }
-
-
-    });
-
-
-}
-
-
-
-window.addEventListener("load", loadStore);
-
-window.addEventListener("load", loadCustomerStore);
-
-function loadProfile() {
+async function loadProfile() {
 
     const userName = localStorage.getItem("loggedInUser");
 
@@ -773,68 +356,34 @@ function loadProfile() {
         return;
     }
 
-    // Find user data
-    let email = "";
-    let user = null;
+    const email = localStorage.getItem("loggedInEmail") || "";
 
-    for (let i = 0; i < localStorage.length; i++) {
-
-        const key = localStorage.key(i);
-
-        try {
-
-            const data = JSON.parse(localStorage.getItem(key));
-
-            if (data && data.fullname === userName) {
-                user = data;
-                email = data.email;
-                break;
-            }
-
-        } catch (e) {}
-
-    }
-
-    // Display profile
     document.getElementById("profileName").textContent = userName;
+    document.getElementById("profileInitial").textContent = userName.charAt(0).toUpperCase();
 
-    document.getElementById("profileInitial").textContent =
-        userName.charAt(0).toUpperCase();
-
-    if (user) {
+    if (email) {
         document.getElementById("profileEmail").textContent = email;
     }
 
-    // Count products
-    const products =
-        JSON.parse(localStorage.getItem("products")) || [];
+    // Count this user's real listings from Firestore.
+    try {
+        const q = query(collection(db, "products"), where("seller", "==", userName));
+        const querySnapshot = await getDocs(q);
+        document.getElementById("listedProducts").textContent = querySnapshot.size;
+    } catch (error) {
+        document.getElementById("listedProducts").textContent = "0";
+        console.log(error.message);
+    }
 
-    const total =
-    products.filter(product => product.seller === userName).length;
+    const savedImage = localStorage.getItem("profileImage");
+    if (savedImage) {
+        document.getElementById("profileImage").src = savedImage;
+    }
 
-document.getElementById("listedProducts").textContent = total;
-
-const savedImage = localStorage.getItem("profileImage");
-
-if (savedImage) {
-    document.getElementById("profileImage").src = savedImage;
-}
-
-const savedCover = localStorage.getItem("coverImage");
-
-if (savedCover) {
-    document.getElementById("coverImage").src = savedCover;
-}
-
-}
-
-function logout() {
-
-    localStorage.removeItem("loggedInUser");
-
-    alert("Logged out successfully.");
-
-    window.location.href = "index.html";
+    const savedCover = localStorage.getItem("coverImage");
+    if (savedCover) {
+        document.getElementById("coverImage").src = savedCover;
+    }
 
 }
 
@@ -842,172 +391,42 @@ if (document.getElementById("profileName")) {
     window.addEventListener("load", loadProfile);
 }
 
-function uploadProfileImage(){
+function uploadProfileImage() {
 
-    const file =
-        document.getElementById("profileImageInput").files[0];
-
-    if(!file) return;
+    const file = document.getElementById("profileImageInput").files[0];
+    if (!file) return;
 
     const reader = new FileReader();
 
-    reader.onload = function(e){
-
-        localStorage.setItem(
-            "profileImage",
-            e.target.result
-        );
-
-        document.getElementById("profileImage").src =
-            e.target.result;
-
+    reader.onload = function (e) {
+        localStorage.setItem("profileImage", e.target.result);
+        document.getElementById("profileImage").src = e.target.result;
     };
 
     reader.readAsDataURL(file);
-
 }
 
-function uploadCoverImage(){
+function uploadCoverImage() {
 
-    const file =
-        document.getElementById("coverInput").files[0];
-
-    if(!file) return;
+    const file = document.getElementById("coverInput").files[0];
+    if (!file) return;
 
     const reader = new FileReader();
 
-    reader.onload = function(e){
-
-        localStorage.setItem(
-            "coverImage",
-            e.target.result
-        );
-
-        document.getElementById("coverImage").src =
-            e.target.result;
-
+    reader.onload = function (e) {
+        localStorage.setItem("coverImage", e.target.result);
+        document.getElementById("coverImage").src = e.target.result;
     };
 
     reader.readAsDataURL(file);
-
 }
 
-// Make functions available to HTML
-window.toggleSidebar = toggleSidebar;
-window.openProduct = openProduct;
-window.searchProducts = searchProducts;
+/* ---------- Make functions available to inline onclick="" handlers ---------- */
+
 window.register = register;
 window.login = login;
-window.postProduct = postProduct;
-window.createStore = createStore;
 window.logout = logout;
+window.postProduct = postProduct;
+window.deleteMyListing = deleteMyListing;
 window.uploadProfileImage = uploadProfileImage;
 window.uploadCoverImage = uploadCoverImage;
-
-
-function addToCart(index) {
-
-    const products = JSON.parse(localStorage.getItem("products")) || [];
-    const cart = JSON.parse(localStorage.getItem("cart")) || [];
-
-    cart.push(products[index]);
-
-    localStorage.setItem("cart", JSON.stringify(cart));
-
-    updateCartCount();
-
-    alert("Product added to cart!");
-}
-
-function loadCart() {
-
-    const cartItems = document.getElementById("cartItems");
-    const cartTotal = document.getElementById("cartTotal");
-
-    if (!cartItems) return;
-
-    const cart = JSON.parse(localStorage.getItem("cart")) || [];
-
-    cartItems.innerHTML = "";
-
-    if (cart.length === 0) {
-        cartItems.innerHTML = "<p>Your cart is empty.</p>";
-        cartTotal.textContent = "Total: R0";
-        return;
-    }
-
-    let total = 0;
-
-    cart.forEach((product, index) => {
-
-        total += Number(product.price);
-
-        cartItems.innerHTML += `
-            <div class="cart-card">
-
-                <img src="${product.image}" alt="${product.name}">
-
-                <div class="cart-info">
-                    <h3>${product.name}</h3>
-
-                    <p><strong>R${product.price}</strong></p>
-
-                    <button class="remove-btn" onclick="removeFromCart(${index})">
-                        Remove
-                    </button>
-                </div>
-
-            </div>
-        `;
-    });
-
-    cartTotal.textContent = "Total: R" + total;
-}
-
-function removeFromCart(index){
-
-    const cart = JSON.parse(localStorage.getItem("cart")) || [];
-
-    cart.splice(index,1);
-
-    localStorage.setItem("cart", JSON.stringify(cart));
-
-    loadCart();
-
-    updateCartCount();
-
-}
-
-loadCart();
-function updateCartCount() {
-
-    const cart = JSON.parse(localStorage.getItem("cart")) || [];
-
-    const cartCount = document.getElementById("cartCount");
-
-    if(cartCount){
-        cartCount.textContent = cart.length;
-    }
-
-}
-
-updateCartCount();
-
-
-const checkoutBtn = document.getElementById("checkoutBtn");
-
-if (checkoutBtn) {
-    checkoutBtn.addEventListener("click", function () {
-
-        const cart = JSON.parse(localStorage.getItem("cart")) || [];
-
-        if (cart.length === 0) {
-            alert("Your cart is empty!");
-            return;
-        }
-
-        window.location.href = "checkout.html";
-    });
-}
-
-window.register = register;
