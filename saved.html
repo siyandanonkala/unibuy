@@ -61,8 +61,8 @@
             <i class="fas fa-file-contract"></i> Terms
         </a>
 
-        <a href="login.html">
-            <i class="fas fa-sign-out-alt"></i> Logout
+        <a href="login.html" id="authLink">
+            <i class="fas fa-sign-in-alt"></i> Login
         </a>
 
     </aside>
@@ -93,12 +93,13 @@
 
     <script src="js/landing.js"></script>
     <script src="js/swipe.js"></script>
-    <script src="js/products.js"></script>
+    <script type="module" src="js/products.js"></script>
     <script src="js/saved.js"></script>
     <script>
-        function renderSavedPage() {
+        async function renderSavedPage() {
             const savedIds = window.UniBuySaved.getSavedIds();
-            const savedProducts = sampleProducts.filter(function (p) {
+            const allProducts = await window.UniBuyProducts.getAll();
+            const savedProducts = allProducts.filter(function (p) {
                 return savedIds.indexOf(p.id) !== -1;
             });
 
@@ -112,7 +113,7 @@
             }
 
             if (emptyState) emptyState.classList.add("hidden");
-            renderProductGrid(savedProducts, "savedGrid");
+            window.UniBuyProducts.renderGrid(savedProducts, "savedGrid");
         }
 
         document.addEventListener("DOMContentLoaded", renderSavedPage);
