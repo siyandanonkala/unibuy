@@ -3,7 +3,8 @@ import { auth, db } from "./firebase.js";
 
 import {
     createUserWithEmailAndPassword,
-    signInWithEmailAndPassword
+    signInWithEmailAndPassword,
+    onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
 
 import {
@@ -17,6 +18,13 @@ import {
     query,
     where
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+
+onAuthStateChanged(auth, (user) => {
+    if (window.location.pathname.endsWith("sell.html") && !user) {
+        alert("Please log in or register before posting an item.");
+        window.location.href = "login.html";
+    }
+});
 
 /* ---------- Contact form (contact.html) ---------- */
 
