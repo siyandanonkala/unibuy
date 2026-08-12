@@ -238,25 +238,27 @@ function register() {
 
 async function login() {
 
+    const emailInput =
+        document.getElementById("loginEmail");
+
+    const passwordInput =
+        document.getElementById("loginPassword");
+
+    if (!emailInput || !passwordInput) {
+        console.error("Login inputs not found.");
+        return;
+    }
+
     const email =
-        document.getElementById(
-            "loginEmail"
-        ).value.trim();
+        emailInput.value.trim();
 
     const password =
-        document.getElementById(
-            "loginPassword"
-        ).value;
+        passwordInput.value;
 
 
-    if (
-        email === "" ||
-        password === ""
-    ) {
+    if (email === "" || password === "") {
 
-        alert(
-            "Please fill in all fields."
-        );
+        alert("Please fill in all fields.");
 
         return;
     }
@@ -288,16 +290,17 @@ async function login() {
 
         if (userDoc.exists()) {
 
+            const userData =
+                userDoc.data();
+
             localStorage.setItem(
                 "loggedInUser",
-                userDoc.data().fullname
+                userData.fullname || email
             );
-
 
             localStorage.setItem(
                 "loggedInEmail",
-                userDoc.data().email ||
-                email
+                userData.email || email
             );
 
         } else {
@@ -307,7 +310,6 @@ async function login() {
                 email
             );
 
-
             localStorage.setItem(
                 "loggedInEmail",
                 email
@@ -315,23 +317,52 @@ async function login() {
         }
 
 
-        alert(
-            "Login successful!"
-        );
+        alert("Login successful!");
 
 
         window.location.href =
             "index.html";
 
+
     } catch (error) {
+
+        console.error(
+            "Login error:",
+            error
+        );
 
         alert(
             error.message
         );
-
     }
+}
+
+
+/* =========================================================
+   LOGIN BUTTON
+   ========================================================= */
+
+const loginButton =
+    document.getElementById("loginButton");
+
+
+if (loginButton) {
+
+    loginButton.addEventListener(
+        "click",
+        login
+    );
 
 }
+
+
+/* =========================================================
+   GLOBAL AUTH FUNCTIONS
+   ========================================================= */
+
+window.login = login;
+window.register = register;
+window.logout = logout;
 
 
 /* =========================================================
