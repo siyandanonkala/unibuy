@@ -15,10 +15,7 @@ import {
     getDocs,
     deleteDoc,
     query,
-    where,
-    orderBy,
-    onSnapshot,
-    serverTimestamp
+    where
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
 
@@ -28,15 +25,35 @@ import {
 
 onAuthStateChanged(auth, (user) => {
 
+    /* Protect sell page */
+
     if (
         window.location.pathname.endsWith("sell.html") &&
         !user
     ) {
+
         alert(
             "Please log in or register before posting an item."
         );
 
-        window.location.href = "login.html";
+        window.location.href =
+            "login.html";
+
+        return;
+    }
+
+
+    /* Protect settings page */
+
+    if (
+        window.location.pathname.endsWith("settings.html") &&
+        !user
+    ) {
+
+        window.location.href =
+            "login.html";
+
+        return;
     }
 
 });
@@ -48,6 +65,7 @@ onAuthStateChanged(auth, (user) => {
 
 const contactForm =
     document.getElementById("contactForm");
+
 
 if (contactForm) {
 
@@ -61,6 +79,7 @@ if (contactForm) {
 
         }
     );
+
 }
 
 
@@ -71,10 +90,12 @@ async function sendContactMessage() {
             "contactName"
         ).value.trim();
 
+
     const email =
         document.getElementById(
             "contactEmail"
         ).value.trim();
+
 
     const message =
         document.getElementById(
@@ -103,7 +124,10 @@ async function sendContactMessage() {
 
 
     if (submitBtn) {
-        submitBtn.disabled = true;
+
+        submitBtn.disabled =
+            true;
+
     }
 
 
@@ -130,16 +154,23 @@ async function sendContactMessage() {
 
         contactForm.reset();
 
+
     } catch (error) {
 
         console.error(error);
 
-        alert(error.message);
+        alert(
+            error.message
+        );
+
 
     } finally {
 
         if (submitBtn) {
-            submitBtn.disabled = false;
+
+            submitBtn.disabled =
+                false;
+
         }
 
     }
@@ -151,17 +182,31 @@ async function sendContactMessage() {
    AUTH: REGISTER
    ========================================================= */
 
-function register() {
+async function register() {
 
     const fullname =
         document.getElementById(
             "fullname"
         ).value.trim();
 
+
     const email =
         document.getElementById(
             "email"
         ).value.trim();
+
+
+    const phoneInput =
+        document.getElementById(
+            "phone"
+        );
+
+
+    const phone =
+        phoneInput
+            ? phoneInput.value.trim()
+            : "";
+
 
     const password =
         document.getElementById(
@@ -169,9 +214,12 @@ function register() {
         ).value;
 
 
+    /* ---------- Validation ---------- */
+
     if (
         fullname === "" ||
         email === "" ||
+        phone === "" ||
         password === ""
     ) {
 
@@ -183,52 +231,95 @@ function register() {
     }
 
 
-    createUserWithEmailAndPassword(
-        auth,
-        email,
-        password
-    )
-        .then(
-            async (userCredential) => {
+    /* ---------- Basic phone validation ---------- */
 
-                const user =
-                    userCredential.user;
+    const phoneDigits =
+        phone.replace(
+            /\D/g,
+            ""
+        );
 
 
-                await setDoc(
-                    doc(
-                        db,
-                        "users",
-                        user.uid
-                    ),
-                    {
-                        fullname:
-                            fullname,
+    if (phoneDigits.length < 10) {
 
-                        email:
-                            email
-                    }
-                );
+        alert(
+            "Please enter a valid phone / WhatsApp number."
+        );
+
+        return;
+    }
 
 
-                alert(
-                    "Account created successfully!"
-                );
+    try {
+
+        /* ---------- Create Firebase account ---------- */
+
+        const userCredential =
+            await createUserWithEmailAndPassword(
+                auth,
+                email,
+                password
+            );
 
 
-                window.location.href =
-                    "login.html";
-            }
-        )
-        .catch(
-            (error) => {
+        const user =
+            userCredential.user;
 
-                alert(
-                    error.message
-                );
+
+        /* ---------- Save profile ---------- */
+
+        await setDoc(
+            doc(
+                db,
+                "users",
+                user.uid
+            ),
+            {
+
+                fullname:
+                    fullname,
+
+                email:
+                    email,
+
+                phone:
+                    phone,
+
+                bio:
+                    ""
 
             }
         );
+
+
+        alert(
+            "Account created successfully!"
+        );
+
+
+        /*
+           Firebase automatically signs the user in
+           after registration.
+        */
+
+        window.location.href =
+            "index.html";
+
+
+    } catch (error) {
+
+        console.error(
+            "Registration error:",
+            error
+        );
+
+
+        alert(
+            error.message
+        );
+
+    }
+
 }
 
 
@@ -239,26 +330,46 @@ function register() {
 async function login() {
 
     const emailInput =
-        document.getElementById("loginEmail");
+        document.getElementById(
+            "loginEmail"
+        );
+
 
     const passwordInput =
-        document.getElementById("loginPassword");
+        document.getElementById(
+            "loginPassword"
+        );
 
-    if (!emailInput || !passwordInput) {
-        console.error("Login inputs not found.");
+
+    if (
+        !emailInput ||
+        !passwordInput
+    ) {
+
+        console.error(
+            "Login inputs not found."
+        );
+
         return;
     }
 
+
     const email =
         emailInput.value.trim();
+
 
     const password =
         passwordInput.value;
 
 
-    if (email === "" || password === "") {
+    if (
+        email === "" ||
+        password === ""
+    ) {
 
-        alert("Please fill in all fields.");
+        alert(
+            "Please fill in all fields."
+        );
 
         return;
     }
@@ -293,14 +404,18 @@ async function login() {
             const userData =
                 userDoc.data();
 
+
             localStorage.setItem(
                 "loggedInUser",
-                userData.fullname || email
+                userData.fullname ||
+                email
             );
+
 
             localStorage.setItem(
                 "loggedInEmail",
-                userData.email || email
+                userData.email ||
+                email
             );
 
         } else {
@@ -310,14 +425,18 @@ async function login() {
                 email
             );
 
+
             localStorage.setItem(
                 "loggedInEmail",
                 email
             );
+
         }
 
 
-        alert("Login successful!");
+        alert(
+            "Login successful!"
+        );
 
 
         window.location.href =
@@ -331,10 +450,13 @@ async function login() {
             error
         );
 
+
         alert(
             error.message
         );
+
     }
+
 }
 
 
@@ -343,7 +465,9 @@ async function login() {
    ========================================================= */
 
 const loginButton =
-    document.getElementById("loginButton");
+    document.getElementById(
+        "loginButton"
+    );
 
 
 if (loginButton) {
@@ -360,9 +484,11 @@ if (loginButton) {
    GLOBAL AUTH FUNCTIONS
    ========================================================= */
 
-window.login = login;
-window.register = register;
-window.logout = logout;
+window.login =
+    login;
+
+window.register =
+    register;
 
 
 /* =========================================================
@@ -374,6 +500,7 @@ function logout() {
     localStorage.removeItem(
         "loggedInUser"
     );
+
 
     localStorage.removeItem(
         "loggedInEmail"
@@ -387,7 +514,12 @@ function logout() {
 
     window.location.href =
         "index.html";
+
 }
+
+
+window.logout =
+    logout;
 
 
 /* =========================================================
@@ -416,6 +548,7 @@ window.addEventListener(
                 user
                     ? `<h3>👋 ${user}</h3><p>Welcome back!</p>`
                     : `<h3>👤 Guest</h3><p>Please login</p>`;
+
         }
 
 
@@ -432,11 +565,14 @@ window.addEventListener(
                 loginLink.innerHTML =
                     '<i class="fas fa-sign-out-alt"></i> Logout';
 
+
                 loginLink.style.color =
                     "#d32f2f";
 
+
                 loginLink.style.fontWeight =
                     "bold";
+
 
                 loginLink.href =
                     "javascript:void(0)";
@@ -448,6 +584,7 @@ window.addEventListener(
                         localStorage.removeItem(
                             "loggedInUser"
                         );
+
 
                         localStorage.removeItem(
                             "loggedInEmail"
@@ -461,6 +598,7 @@ window.addEventListener(
 
                         window.location.href =
                             "index.html";
+
                     };
 
             } else {
@@ -468,10 +606,13 @@ window.addEventListener(
                 loginLink.innerHTML =
                     '<i class="fas fa-sign-in-alt"></i> Login';
 
+
                 loginLink.href =
                     "login.html";
 
-                loginLink.onclick = null;
+
+                loginLink.onclick =
+                    null;
 
             }
 
@@ -503,25 +644,26 @@ if (productForm) {
 
         }
     );
+
 }
 
 
 async function postProduct() {
 
-    const loggedInUser =
-        localStorage.getItem(
-            "loggedInUser"
-        );
+    const currentUser =
+        auth.currentUser;
 
 
-    if (!loggedInUser) {
+    if (!currentUser) {
 
         alert(
             "Please login first"
         );
 
+
         window.location.href =
             "login.html";
+
 
         return;
     }
@@ -619,13 +761,16 @@ async function postProduct() {
                             imageData,
 
                         seller:
-                            loggedInUser,
+                            localStorage.getItem(
+                                "loggedInUser"
+                            ) ||
+                            currentUser.email,
 
                         sellerUid:
-                            auth.currentUser.uid,
+                            currentUser.uid,
 
                         sellerEmail:
-                            auth.currentUser.email,
+                            currentUser.email,
 
                         likes:
                             0,
@@ -645,13 +790,16 @@ async function postProduct() {
                 window.location.href =
                     "mylistings.html";
 
+
             } catch (error) {
 
                 console.error(error);
 
+
                 alert(
                     error.message
                 );
+
             }
 
         };
@@ -701,13 +849,11 @@ async function loadMyFirestoreListings() {
     if (!container) return;
 
 
-    const loggedInUser =
-        localStorage.getItem(
-            "loggedInUser"
-        );
+    const currentUser =
+        auth.currentUser;
 
 
-    if (!loggedInUser) {
+    if (!currentUser) {
 
         window.location.href =
             "login.html";
@@ -729,9 +875,9 @@ async function loadMyFirestoreListings() {
                     "products"
                 ),
                 where(
-                    "seller",
+                    "sellerUid",
                     "==",
-                    loggedInUser
+                    currentUser.uid
                 )
             );
 
@@ -744,7 +890,8 @@ async function loadMyFirestoreListings() {
             "";
 
 
-        let count = 0;
+        let count =
+            0;
 
 
         querySnapshot.forEach(
@@ -785,17 +932,26 @@ async function loadMyFirestoreListings() {
                     '" onerror="this.onerror=null;this.src=\'' +
                     placeholder +
                     '\'" alt="' +
-                    product.name +
+                    (
+                        product.name ||
+                        "Item"
+                    ) +
                     '">' +
 
                     '<div class="product-info">' +
 
                     '<h3>' +
-                    product.name +
+                    (
+                        product.name ||
+                        ""
+                    ) +
                     '</h3>' +
 
                     '<p class="product-price">R' +
-                    product.price +
+                    (
+                        product.price ||
+                        0
+                    ) +
                     '</p>' +
 
                     '<p>' +
@@ -825,18 +981,21 @@ async function loadMyFirestoreListings() {
             container.innerHTML =
                 '<p>You haven\'t listed anything yet. ' +
                 '<a href="sell.html">Sell your first item</a></p>';
+
         }
 
 
     } catch (error) {
 
+        console.error(
+            "Listings error:",
+            error
+        );
+
+
         container.innerHTML =
             "<p>Couldn't load your listings right now.</p>";
 
-
-        console.log(
-            error.message
-        );
     }
 
 }
@@ -849,6 +1008,7 @@ async function deleteMyListing(id) {
             "Delete this listing?"
         )
     ) {
+
         return;
     }
 
@@ -866,14 +1026,20 @@ async function deleteMyListing(id) {
 
         loadMyFirestoreListings();
 
+
     } catch (error) {
 
         alert(
             error.message
         );
+
     }
 
 }
+
+
+window.deleteMyListing =
+    deleteMyListing;
 
 
 if (
@@ -886,6 +1052,7 @@ if (
         "load",
         loadMyFirestoreListings
     );
+
 }
 
 
@@ -895,13 +1062,11 @@ if (
 
 async function loadProfile() {
 
-    const userName =
-        localStorage.getItem(
-            "loggedInUser"
-        );
+    const currentUser =
+        auth.currentUser;
 
 
-    if (!userName) {
+    if (!currentUser) {
 
         window.location.href =
             "login.html";
@@ -910,106 +1075,277 @@ async function loadProfile() {
     }
 
 
-    const email =
-        localStorage.getItem(
-            "loggedInEmail"
-        ) || "";
-
-
-    document.getElementById(
-        "profileName"
-    ).textContent =
-        userName;
-
-
-    document.getElementById(
-        "profileInitial"
-    ).textContent =
-        userName
-            .charAt(0)
-            .toUpperCase();
-
-
-    if (email) {
-
-        document.getElementById(
-            "profileEmail"
-        ).textContent =
-            email;
-    }
-
-
     try {
 
-        const q =
-            query(
-                collection(
-                    db,
-                    "products"
-                ),
-                where(
-                    "seller",
-                    "==",
-                    userName
-                )
+        /* ---------- Get Firebase profile ---------- */
+
+        const userRef =
+            doc(
+                db,
+                "users",
+                currentUser.uid
             );
 
 
-        const querySnapshot =
-            await getDocs(q);
+        const userSnap =
+            await getDoc(
+                userRef
+            );
 
 
-        document.getElementById(
-            "listedProducts"
-        ).textContent =
-            querySnapshot.size;
+        if (!userSnap.exists()) {
+
+            alert(
+                "Your profile information could not be found."
+            );
+
+            return;
+        }
+
+
+        const userData =
+            userSnap.data();
+
+
+        /* ---------- Name ---------- */
+
+        const userName =
+            userData.fullname ||
+            currentUser.email ||
+            "User";
+
+
+        const profileName =
+            document.getElementById(
+                "profileName"
+            );
+
+
+        if (profileName) {
+
+            profileName.textContent =
+                userName;
+
+        }
+
+
+        /* ---------- Profile initial ---------- */
+
+        const profileInitial =
+            document.getElementById(
+                "profileInitial"
+            );
+
+
+        if (profileInitial) {
+
+            profileInitial.textContent =
+                userName
+                    .charAt(0)
+                    .toUpperCase();
+
+        }
+
+
+        /* ---------- Email ---------- */
+
+        const profileEmail =
+            document.getElementById(
+                "profileEmail"
+            );
+
+
+        if (profileEmail) {
+
+            profileEmail.textContent =
+                userData.email ||
+                currentUser.email ||
+                "";
+
+        }
+
+
+        /* ---------- WhatsApp number ---------- */
+
+        const whatsappInput =
+            document.getElementById(
+                "whatsappNumber"
+            );
+
+
+        if (whatsappInput) {
+
+            whatsappInput.value =
+                userData.phone ||
+                "";
+
+        }
+
+
+        /* ---------- Bio ---------- */
+
+        const bioInput =
+            document.getElementById(
+                "bio"
+            );
+
+
+        if (bioInput) {
+
+            bioInput.value =
+                userData.bio ||
+                "";
+
+
+            const bioCounter =
+                document.getElementById(
+                    "bioCounter"
+                );
+
+
+            if (bioCounter) {
+
+                bioCounter.textContent =
+                    bioInput.value.length +
+                    "/250";
+
+            }
+
+        }
+
+
+        /* ---------- Count products ---------- */
+
+        try {
+
+            const q =
+                query(
+                    collection(
+                        db,
+                        "products"
+                    ),
+                    where(
+                        "sellerUid",
+                        "==",
+                        currentUser.uid
+                    )
+                );
+
+
+            const querySnapshot =
+                await getDocs(q);
+
+
+            const listedProducts =
+                document.getElementById(
+                    "listedProducts"
+                );
+
+
+            if (listedProducts) {
+
+                listedProducts.textContent =
+                    querySnapshot.size;
+
+            }
+
+
+        } catch (error) {
+
+            console.log(
+                "Could not count listings:",
+                error.message
+            );
+
+
+            const listedProducts =
+                document.getElementById(
+                    "listedProducts"
+                );
+
+
+            if (listedProducts) {
+
+                listedProducts.textContent =
+                    "0";
+
+            }
+
+        }
+
+
+        /* ---------- Profile image ---------- */
+
+        const savedImage =
+            localStorage.getItem(
+                "profileImage"
+            );
+
+
+        if (savedImage) {
+
+            const profileImage =
+                document.getElementById(
+                    "profileImage"
+                );
+
+
+            if (profileImage) {
+
+                profileImage.src =
+                    savedImage;
+
+            }
+
+        }
+
+
+        /* ---------- Cover image ---------- */
+
+        const savedCover =
+            localStorage.getItem(
+                "coverImage"
+            );
+
+
+        if (savedCover) {
+
+            const coverImage =
+                document.getElementById(
+                    "coverImage"
+                );
+
+
+            if (coverImage) {
+
+                coverImage.src =
+                    savedCover;
+
+            }
+
+        }
 
 
     } catch (error) {
 
-        document.getElementById(
-            "listedProducts"
-        ).textContent =
-            "0";
-
-
-        console.log(
-            error.message
-        );
-    }
-
-
-    const savedImage =
-        localStorage.getItem(
-            "profileImage"
+        console.error(
+            "Profile loading error:",
+            error
         );
 
 
-    if (savedImage) {
-
-        document.getElementById(
-            "profileImage"
-        ).src =
-            savedImage;
-    }
-
-
-    const savedCover =
-        localStorage.getItem(
-            "coverImage"
+        alert(
+            "Could not load your profile."
         );
 
-
-    if (savedCover) {
-
-        document.getElementById(
-            "coverImage"
-        ).src =
-            savedCover;
     }
 
 }
 
+
+/* =========================================================
+   START PROFILE / SETTINGS
+   ========================================================= */
 
 if (
     document.getElementById(
@@ -1017,12 +1353,296 @@ if (
     )
 ) {
 
-    window.addEventListener(
-        "load",
-        loadProfile
+    onAuthStateChanged(
+        auth,
+        (user) => {
+
+            if (user) {
+
+                loadProfile();
+
+            }
+
+        }
     );
+
 }
 
+
+/* =========================================================
+   SAVE BIO
+   ========================================================= */
+
+async function saveBio() {
+
+    const currentUser =
+        auth.currentUser;
+
+
+    if (!currentUser) {
+
+        alert(
+            "Please login first."
+        );
+
+
+        window.location.href =
+            "login.html";
+
+
+        return;
+    }
+
+
+    const bioInput =
+        document.getElementById(
+            "bio"
+        );
+
+
+    const status =
+        document.getElementById(
+            "bioStatus"
+        );
+
+
+    if (!bioInput) return;
+
+
+    const bio =
+        bioInput.value.trim();
+
+
+    if (bio.length > 250) {
+
+        alert(
+            "Your bio cannot be longer than 250 characters."
+        );
+
+        return;
+    }
+
+
+    try {
+
+        await setDoc(
+            doc(
+                db,
+                "users",
+                currentUser.uid
+            ),
+            {
+                bio: bio
+            },
+            {
+                merge: true
+            }
+        );
+
+
+        if (status) {
+
+            status.textContent =
+                "Bio saved successfully.";
+
+            status.style.color =
+                "#006400";
+
+        }
+
+
+    } catch (error) {
+
+        console.error(
+            "Save bio error:",
+            error
+        );
+
+
+        if (status) {
+
+            status.textContent =
+                "Could not save bio.";
+
+            status.style.color =
+                "#d32f2f";
+
+        }
+
+    }
+
+}
+
+
+/* =========================================================
+   SAVE WHATSAPP NUMBER
+   ========================================================= */
+
+async function saveWhatsAppNumber() {
+
+    const currentUser =
+        auth.currentUser;
+
+
+    if (!currentUser) {
+
+        alert(
+            "Please login first."
+        );
+
+
+        window.location.href =
+            "login.html";
+
+
+        return;
+    }
+
+
+    const phoneInput =
+        document.getElementById(
+            "whatsappNumber"
+        );
+
+
+    const status =
+        document.getElementById(
+            "whatsappStatus"
+        );
+
+
+    const saveButton =
+        document.getElementById(
+            "saveWhatsappBtn"
+        );
+
+
+    if (!phoneInput) return;
+
+
+    const phone =
+        phoneInput.value.trim();
+
+
+    if (phone === "") {
+
+        alert(
+            "Please enter your WhatsApp number."
+        );
+
+        return;
+    }
+
+
+    const digits =
+        phone.replace(
+            /\D/g,
+            ""
+        );
+
+
+    if (digits.length < 10) {
+
+        alert(
+            "Please enter a valid WhatsApp number."
+        );
+
+        return;
+    }
+
+
+    try {
+
+        if (saveButton) {
+
+            saveButton.disabled =
+                true;
+
+
+            saveButton.innerHTML =
+                '<i class="fas fa-spinner fa-spin"></i> Saving...';
+
+        }
+
+
+        await setDoc(
+            doc(
+                db,
+                "users",
+                currentUser.uid
+            ),
+            {
+                phone: phone
+            },
+            {
+                merge: true
+            }
+        );
+
+
+        if (status) {
+
+            status.textContent =
+                "WhatsApp number saved successfully.";
+
+            status.style.color =
+                "#006400";
+
+        }
+
+
+    } catch (error) {
+
+        console.error(
+            "Save WhatsApp error:",
+            error
+        );
+
+
+        if (status) {
+
+            status.textContent =
+                "Could not save WhatsApp number.";
+
+            status.style.color =
+                "#d32f2f";
+
+        }
+
+
+    } finally {
+
+        if (saveButton) {
+
+            saveButton.disabled =
+                false;
+
+
+            saveButton.innerHTML =
+                '<i class="fas fa-save"></i> Save WhatsApp Number';
+
+        }
+
+    }
+
+}
+
+
+/* =========================================================
+   GLOBAL SETTINGS FUNCTIONS
+   ========================================================= */
+
+window.saveBio =
+    saveBio;
+
+
+window.saveWhatsAppNumber =
+    saveWhatsAppNumber;
+
+
+/* =========================================================
+   PROFILE IMAGE
+   ========================================================= */
 
 function uploadProfileImage() {
 
@@ -1048,18 +1668,36 @@ function uploadProfileImage() {
             );
 
 
-            document.getElementById(
-                "profileImage"
-            ).src =
-                e.target.result;
+            const image =
+                document.getElementById(
+                    "profileImage"
+                );
+
+
+            if (image) {
+
+                image.src =
+                    e.target.result;
+
+            }
+
         };
 
 
     reader.readAsDataURL(
         file
     );
+
 }
 
+
+window.uploadProfileImage =
+    uploadProfileImage;
+
+
+/* =========================================================
+   COVER IMAGE
+   ========================================================= */
 
 function uploadCoverImage() {
 
@@ -1085,41 +1723,84 @@ function uploadCoverImage() {
             );
 
 
-            document.getElementById(
-                "coverImage"
-            ).src =
-                e.target.result;
+            const image =
+                document.getElementById(
+                    "coverImage"
+                );
+
+
+            if (image) {
+
+                image.src =
+                    e.target.result;
+
+            }
+
         };
 
 
     reader.readAsDataURL(
         file
     );
+
 }
 
 
+window.uploadCoverImage =
+    uploadCoverImage;
+
+
 /* =========================================================
-   UNIBUY MESSAGING
+   UNIBUY - WHATSAPP CONTACT SYSTEM
    ========================================================= */
 
-/* ---------- Start Messages Page ---------- */
+/*
+   Flow:
+
+   Product
+      ↓
+   Contact Seller
+      ↓
+   messages.html?product=PRODUCT_ID
+      ↓
+   Get seller from Firebase
+      ↓
+   Get seller WhatsApp number
+      ↓
+   Open WhatsApp
+*/
+
+
+/* =========================================================
+   START MESSAGES PAGE
+   ========================================================= */
 
 async function initMessagesPage(user) {
 
     const conversationList =
-        document.getElementById("conversationList");
+        document.getElementById(
+            "conversationList"
+        );
 
-    if (!conversationList) return;
 
     const params =
-        new URLSearchParams(window.location.search);
+        new URLSearchParams(
+            window.location.search
+        );
+
 
     const productId =
         params.get("product");
 
+
+    /*
+       If opened from a product,
+       immediately contact seller.
+    */
+
     if (productId) {
 
-        await openConversationFromProduct(
+        await contactSellerFromProduct(
             user,
             productId
         );
@@ -1127,51 +1808,98 @@ async function initMessagesPage(user) {
         return;
     }
 
-    loadUserConversations(user);
+
+    /*
+       No Firebase conversations.
+    */
+
+    if (conversationList) {
+
+        conversationList.innerHTML =
+
+            '<div class="empty-state">' +
+
+                '<i class="fab fa-whatsapp" ' +
+                'style="font-size:40px;margin-bottom:15px;"></i>' +
+
+                '<h3>Contact sellers on WhatsApp</h3>' +
+
+                '<p>' +
+
+                    'Open a product and tap ' +
+                    '<strong>Contact Seller</strong> ' +
+                    'to chat with the seller on WhatsApp.' +
+
+                '</p>' +
+
+            '</div>';
+
+    }
+
 }
 
 
 /* =========================================================
-   OPEN CONVERSATION FROM PRODUCT
+   CONTACT SELLER FROM PRODUCT
    ========================================================= */
 
-async function openConversationFromProduct(
+async function contactSellerFromProduct(
     currentUser,
     productId
 ) {
 
     try {
 
+        /* ---------- Get product ---------- */
+
         const productRef =
-            doc(db, "products", productId);
+            doc(
+                db,
+                "products",
+                productId
+            );
+
 
         const productSnap =
-            await getDoc(productRef);
+            await getDoc(
+                productRef
+            );
+
 
         if (!productSnap.exists()) {
 
-            alert("This product could not be found.");
-
-            window.location.href =
-                "messages.html";
+            alert(
+                "This product could not be found."
+            );
 
             return;
         }
 
+
         const product =
             productSnap.data();
 
+
+        /* ---------- Find seller ---------- */
+
         let sellerUid =
-            product.sellerUid || "";
+            product.sellerUid ||
+            "";
 
 
-        /* ---------- Find seller by email ---------- */
+        /* ---------- Fallback: seller email ---------- */
 
-        if (!sellerUid && product.sellerEmail) {
+        if (
+            !sellerUid &&
+            product.sellerEmail
+        ) {
 
             const sellerQuery =
                 query(
-                    collection(db, "users"),
+                    collection(
+                        db,
+                        "users"
+                    ),
                     where(
                         "email",
                         "==",
@@ -1179,24 +1907,38 @@ async function openConversationFromProduct(
                     )
                 );
 
-            const sellerSnapshot =
-                await getDocs(sellerQuery);
 
-            if (!sellerSnapshot.empty) {
+            const sellerSnapshot =
+                await getDocs(
+                    sellerQuery
+                );
+
+
+            if (
+                !sellerSnapshot.empty
+            ) {
 
                 sellerUid =
                     sellerSnapshot.docs[0].id;
+
             }
+
         }
 
 
-        /* ---------- Find seller by name ---------- */
+        /* ---------- Fallback: seller name ---------- */
 
-        if (!sellerUid && product.seller) {
+        if (
+            !sellerUid &&
+            product.seller
+        ) {
 
             const sellerQuery =
                 query(
-                    collection(db, "users"),
+                    collection(
+                        db,
+                        "users"
+                    ),
                     where(
                         "fullname",
                         "==",
@@ -1204,16 +1946,26 @@ async function openConversationFromProduct(
                     )
                 );
 
-            const sellerSnapshot =
-                await getDocs(sellerQuery);
 
-            if (!sellerSnapshot.empty) {
+            const sellerSnapshot =
+                await getDocs(
+                    sellerQuery
+                );
+
+
+            if (
+                !sellerSnapshot.empty
+            ) {
 
                 sellerUid =
                     sellerSnapshot.docs[0].id;
+
             }
+
         }
 
+
+        /* ---------- Seller not found ---------- */
 
         if (!sellerUid) {
 
@@ -1225,879 +1977,418 @@ async function openConversationFromProduct(
         }
 
 
-        /* ---------- Prevent self messaging ---------- */
+        /* ---------- Prevent contacting yourself ---------- */
 
-        if (sellerUid === currentUser.uid) {
+        if (
+            currentUser &&
+            sellerUid === currentUser.uid
+        ) {
 
             alert(
-                "You cannot message yourself about your own listing."
+                "You cannot contact yourself about your own listing."
             );
-
-            window.location.href =
-                "messages.html";
 
             return;
         }
 
 
-        await openSellerConversation(
-            currentUser,
+        /* ---------- Open WhatsApp ---------- */
+
+        await openSellerWhatsApp(
             sellerUid,
-            productId
+            product
         );
+
 
     } catch (error) {
 
         console.error(
-            "Open seller conversation error:",
+            "Contact seller error:",
             error
         );
 
+
         alert(
-            "Could not open the seller's chat.\n\n" +
-            error.code +
-            "\n" +
-            error.message
+            "Could not contact the seller.\n\n" +
+            (
+                error.message ||
+                "Please try again."
+            )
         );
+
     }
+
 }
 
 
 /* =========================================================
-   CREATE / OPEN SELLER CHAT
+   OPEN SELLER WHATSAPP
    ========================================================= */
 
-async function openSellerConversation(
-    currentUser,
+async function openSellerWhatsApp(
     sellerUid,
-    productId
+    product
 ) {
-
-    const conversationList =
-        document.getElementById(
-            "conversationList"
-        );
-
-    const emptyMessage =
-        document.getElementById(
-            "messagesEmpty"
-        );
-
-    if (!conversationList) return;
-
 
     try {
 
-        /* ---------- Get product ---------- */
+        /* ---------- Get seller ---------- */
 
-        const productSnap =
-            await getDoc(
-                doc(
-                    db,
-                    "products",
-                    productId
-                )
+        const sellerRef =
+            doc(
+                db,
+                "users",
+                sellerUid
             );
 
-        if (!productSnap.exists()) {
 
-            alert("Product no longer exists.");
+        const sellerSnap =
+            await getDoc(
+                sellerRef
+            );
+
+
+        if (!sellerSnap.exists()) {
+
+            alert(
+                "Seller information could not be found."
+            );
 
             return;
         }
 
-        const product =
-            productSnap.data();
+
+        const seller =
+            sellerSnap.data();
+
+
+        /*
+           Main field is now "phone".
+
+           Older field names are kept as fallbacks
+           so existing users still work.
+        */
+
+        let phone =
+            seller.phone ||
+            seller.whatsapp ||
+            seller.whatsappNumber ||
+            seller.contact ||
+            seller.contactNumber ||
+            seller.mobile ||
+            seller.cellphone ||
+            "";
+
+
+        /* ---------- No phone ---------- */
+
+        if (!phone) {
+
+            alert(
+                "This seller has not added a WhatsApp number yet."
+            );
+
+            return;
+        }
+
+
+        /*
+           Remove:
+           +
+           spaces
+           brackets
+           dashes
+           etc.
+        */
+
+        phone =
+            String(phone)
+                .replace(/\D/g, "");
+
+
+        /*
+           South Africa:
+
+           0781234567
+                ↓
+           27781234567
+        */
+
+        if (
+            phone.startsWith("0")
+        ) {
+
+            phone =
+                "27" +
+                phone.substring(1);
+
+        }
+
+
+        /* ---------- Validate phone ---------- */
+
+        if (
+            phone.length < 10
+        ) {
+
+            alert(
+                "The seller's WhatsApp number appears to be invalid."
+            );
+
+            return;
+        }
+
+
+        /* ---------- Product information ---------- */
 
         const productName =
-            product.name || "Product";
+            product.name ||
+            product.title ||
+            "this product";
 
 
-        /* ---------- Get seller ---------- */
-
-        const sellerSnap =
-            await getDoc(
-                doc(
-                    db,
-                    "users",
-                    sellerUid
-                )
-            );
-
-        let sellerName =
-            product.seller || "Seller";
-
-        if (sellerSnap.exists()) {
-
-            const sellerData =
-                sellerSnap.data();
-
-            sellerName =
-                sellerData.fullname ||
-                sellerData.email ||
-                sellerName;
-        }
+        const productPrice =
+            product.price
+                ? ` (R${product.price})`
+                : "";
 
 
-        /* ---------- Conversation ID ---------- */
+        /* ---------- Seller name ---------- */
 
-        const participants = [
-            currentUser.uid,
-            sellerUid
-        ].sort();
-
-        const conversationId =
-            productId +
-            "_" +
-            participants.join("_");
+        const sellerName =
+            seller.fullname ||
+            seller.name ||
+            seller.email ||
+            "Seller";
 
 
-        const conversationRef =
-            doc(
-                db,
-                "conversations",
-                conversationId
+        /* ---------- WhatsApp message ---------- */
+
+        const message =
+
+            `Hi ${sellerName},\n\n` +
+
+            `I'm interested in your ` +
+            `"${productName}"` +
+
+            `${productPrice} ` +
+
+            `listed on UniBuy.\n\n` +
+
+            `Is it still available?`;
+
+
+        /* ---------- WhatsApp URL ---------- */
+
+        const whatsappURL =
+            "https://wa.me/" +
+            phone +
+            "?text=" +
+            encodeURIComponent(
+                message
             );
 
 
-        /* =================================================
-           CREATE CONVERSATION
-           ================================================= */
-
-        const existingConversation =
-            await getDoc(
-                conversationRef
-            );
-
-
-        if (!existingConversation.exists()) {
-
-            await setDoc(
-                conversationRef,
-                {
-
-                    buyerUid:
-                        currentUser.uid,
-
-                    sellerUid:
-                        sellerUid,
-
-                    participants:
-                        participants,
-
-                    productId:
-                        productId,
-
-                    productName:
-                        productName,
-
-                    lastMessage:
-                        "",
-
-                    lastSenderUid:
-                        "",
-
-                    createdAt:
-                        serverTimestamp(),
-
-                    updatedAt:
-                        serverTimestamp()
-                }
-            );
-
-            console.log(
-                "NEW conversation created:",
-                conversationId
-            );
-
-        } else {
-
-            console.log(
-                "EXISTING conversation opened:",
-                conversationId
-            );
-        }
-
-
-        /* ---------- Hide empty message ---------- */
-
-        if (emptyMessage) {
-
-            emptyMessage.style.display =
-                "none";
-        }
-
-
-        /* =================================================
-           CHAT UI
-           ================================================= */
-
-        conversationList.innerHTML =
-
-            '<div class="chat-container">' +
-
-                '<div class="chat-header">' +
-
-                    '<button ' +
-                        'type="button" ' +
-                        'id="backToMessages" ' +
-                        'class="chat-back">' +
-
-                        '<i class="fas fa-arrow-left"></i>' +
-
-                    '</button>' +
-
-                    '<div>' +
-
-                        '<strong>' +
-                            escapeHtml(
-                                sellerName
-                            ) +
-                        '</strong>' +
-
-                        '<small>' +
-                            escapeHtml(
-                                productName
-                            ) +
-                        '</small>' +
-
-                    '</div>' +
-
-                '</div>' +
-
-                '<div ' +
-                    'class="chat-messages" ' +
-                    'id="chatMessages">' +
-
-                '</div>' +
-
-                '<form ' +
-                    'class="chat-input-area" ' +
-                    'id="chatForm">' +
-
-                    '<input ' +
-                        'type="text" ' +
-                        'id="chatInput" ' +
-                        'placeholder="Type a message..." ' +
-                        'autocomplete="off">' +
-
-                    '<button type="submit">' +
-
-                        '<i class="fas fa-paper-plane"></i>' +
-
-                    '</button>' +
-
-                '</form>' +
-
-            '</div>';
-
-
-        /* ---------- Back button ---------- */
-
-        const backButton =
-            document.getElementById(
-                "backToMessages"
-            );
-
-        if (backButton) {
-
-            backButton.addEventListener(
-                "click",
-                function () {
-
-                    window.location.href =
-                        "messages.html";
-
-                }
-            );
-        }
-
-
-        const chatMessages =
-            document.getElementById(
-                "chatMessages"
-            );
-
-        const chatForm =
-            document.getElementById(
-                "chatForm"
-            );
-
-        const chatInput =
-            document.getElementById(
-                "chatInput"
-            );
-
-
-        /* =================================================
-           MESSAGES COLLECTION
-           ================================================= */
-
-        const messagesRef =
-            collection(
-                db,
-                "conversations",
-                conversationId,
-                "messages"
-            );
-
-
-        const messagesQuery =
-            query(
-                messagesRef,
-                orderBy(
-                    "createdAt",
-                    "asc"
-                )
-            );
-
-
-        /* =================================================
-           REAL-TIME MESSAGES
-           ================================================= */
-
-        onSnapshot(
-            messagesQuery,
-
-            function (snapshot) {
-
-                chatMessages.innerHTML = "";
-
-                if (snapshot.empty) {
-
-                    chatMessages.innerHTML =
-                        '<div class="no-chat-messages">' +
-                        'Start the conversation 👋' +
-                        '</div>';
-
-                    return;
-                }
-
-
-                snapshot.forEach(
-                    function (messageDoc) {
-
-                        const message =
-                            messageDoc.data();
-
-                        const isMine =
-                            message.senderUid ===
-                            currentUser.uid;
-
-
-                        const messageDiv =
-                            document.createElement(
-                                "div"
-                            );
-
-
-                        messageDiv.className =
-                            "chat-message " +
-                            (
-                                isMine
-                                    ? "mine"
-                                    : "theirs"
-                            );
-
-
-                        messageDiv.innerHTML =
-
-                            '<div class="message-bubble">' +
-
-                                escapeHtml(
-                                    message.text || ""
-                                ) +
-
-                            '</div>';
-
-
-                        chatMessages.appendChild(
-                            messageDiv
-                        );
-                    }
-                );
-
-
-                chatMessages.scrollTop =
-                    chatMessages.scrollHeight;
-
-            },
-
-            function (error) {
-
-                console.error(
-                    "Messages listener error:",
-                    error
-                );
-
-                chatMessages.innerHTML =
-                    "<p>Unable to load messages.</p>";
-            }
+        console.log(
+            "Opening WhatsApp:",
+            whatsappURL
         );
 
 
-        /* =================================================
-           SEND MESSAGE
-           ================================================= */
+        /* ---------- Open WhatsApp ---------- */
 
-        chatForm.addEventListener(
-            "submit",
-            async function (e) {
-
-                e.preventDefault();
-
-                const text =
-                    chatInput.value.trim();
-
-                if (!text) return;
+        window.location.href =
+            whatsappURL;
 
 
-                chatInput.disabled =
-                    true;
+    } catch (error) {
+
+        console.error(
+            "WhatsApp error:",
+            error
+        );
 
 
-                try {
+        alert(
+            "Unable to open WhatsApp.\n\n" +
+            (
+                error.message ||
+                "Please try again."
+            )
+        );
 
-                    const senderName =
-                        localStorage.getItem(
-                            "loggedInUser"
-                        ) ||
-                        currentUser.email ||
-                        "User";
+    }
 
-
-                    /* ---------- Add message ---------- */
-
-                    await addDoc(
-                        messagesRef,
-                        {
-
-                            text:
-                                text,
-
-                            senderUid:
-                                currentUser.uid,
-
-                            senderName:
-                                senderName,
-
-                            createdAt:
-                                serverTimestamp()
-
-                        }
-                    );
+}
 
 
-                    /* ---------- Update conversation ---------- */
+/* =========================================================
+   DIRECT CONTACT FUNCTION
+   ========================================================= */
 
-                    await setDoc(
-                        conversationRef,
-                        {
+async function contactSellerOnWhatsApp(
+    product
+) {
 
-                            lastMessage:
-                                text,
+    try {
 
-                            lastSenderUid:
-                                currentUser.uid,
+        if (!product) {
 
-                            updatedAt:
-                                serverTimestamp()
+            alert(
+                "Product information is missing."
+            );
 
-                        },
-                        {
-                            merge: true
-                        }
-                    );
+            return;
+        }
 
 
-                    chatInput.value = "";
+        let sellerUid =
+            product.sellerUid ||
+            "";
 
 
-                } catch (error) {
+        /* ---------- Find seller by email ---------- */
 
-                    console.error(
-                        "Send message error:",
-                        error
-                    );
+        if (
+            !sellerUid &&
+            product.sellerEmail
+        ) {
 
-                    alert(
-                        "Could not send message.\n\n" +
-                        error.code +
-                        "\n" +
-                        error.message
-                    );
+            const sellerQuery =
+                query(
+                    collection(
+                        db,
+                        "users"
+                    ),
+                    where(
+                        "email",
+                        "==",
+                        product.sellerEmail
+                    )
+                );
 
-                } finally {
 
-                    chatInput.disabled =
-                        false;
+            const sellerSnapshot =
+                await getDocs(
+                    sellerQuery
+                );
 
-                    chatInput.focus();
-                }
+
+            if (
+                !sellerSnapshot.empty
+            ) {
+
+                sellerUid =
+                    sellerSnapshot.docs[0].id;
 
             }
+
+        }
+
+
+        /* ---------- Find seller by name ---------- */
+
+        if (
+            !sellerUid &&
+            product.seller
+        ) {
+
+            const sellerQuery =
+                query(
+                    collection(
+                        db,
+                        "users"
+                    ),
+                    where(
+                        "fullname",
+                        "==",
+                        product.seller
+                    )
+                );
+
+
+            const sellerSnapshot =
+                await getDocs(
+                    sellerQuery
+                );
+
+
+            if (
+                !sellerSnapshot.empty
+            ) {
+
+                sellerUid =
+                    sellerSnapshot.docs[0].id;
+
+            }
+
+        }
+
+
+        if (!sellerUid) {
+
+            alert(
+                "Seller information could not be found."
+            );
+
+            return;
+        }
+
+
+        /* ---------- Current user ---------- */
+
+        const currentUser =
+            auth.currentUser;
+
+
+        if (
+            currentUser &&
+            sellerUid === currentUser.uid
+        ) {
+
+            alert(
+                "You cannot contact yourself about your own listing."
+            );
+
+            return;
+        }
+
+
+        await openSellerWhatsApp(
+            sellerUid,
+            product
         );
 
 
     } catch (error) {
 
         console.error(
-            "Conversation error:",
+            "Contact seller error:",
             error
         );
 
-        conversationList.innerHTML =
 
-            '<p class="empty-state">' +
-
-                'Could not open this conversation.' +
-
-                '<br><br>' +
-
-                escapeHtml(
-                    error.code || ""
-                ) +
-
-                '<br>' +
-
-                escapeHtml(
-                    error.message || ""
-                ) +
-
-            '</p>';
-    }
-}
-
-
-/* =========================================================
-   LOAD EXISTING CONVERSATIONS
-   ========================================================= */
-
-function loadUserConversations(user) {
-
-    const conversationList =
-        document.getElementById(
-            "conversationList"
+        alert(
+            "Could not contact the seller."
         );
-
-    const emptyMessage =
-        document.getElementById(
-            "messagesEmpty"
-        );
-
-    if (!conversationList) return;
-
-
-    const q =
-        query(
-            collection(
-                db,
-                "conversations"
-            ),
-            where(
-                "participants",
-                "array-contains",
-                user.uid
-            )
-        );
-
-
-    onSnapshot(
-
-        q,
-
-        async function (snapshot) {
-
-            conversationList.innerHTML = "";
-
-
-            if (snapshot.empty) {
-
-                if (emptyMessage) {
-
-                    emptyMessage.style.display =
-                        "block";
-                }
-
-                return;
-            }
-
-
-            if (emptyMessage) {
-
-                emptyMessage.style.display =
-                    "none";
-            }
-
-
-            const conversations =
-                snapshot.docs
-                    .map(
-                        function (conversationDoc) {
-
-                            return {
-
-                                id:
-                                    conversationDoc.id,
-
-                                data:
-                                    conversationDoc.data()
-
-                            };
-                        }
-                    )
-                    .sort(
-                        function (a, b) {
-
-                            const aTime =
-                                a.data.updatedAt &&
-                                a.data.updatedAt.toMillis
-                                    ? a.data.updatedAt.toMillis()
-                                    : 0;
-
-                            const bTime =
-                                b.data.updatedAt &&
-                                b.data.updatedAt.toMillis
-                                    ? b.data.updatedAt.toMillis()
-                                    : 0;
-
-                            return bTime - aTime;
-                        }
-                    );
-
-
-            for (
-                const conversation
-                of conversations
-            ) {
-
-                const data =
-                    conversation.data;
-
-
-                const otherUid =
-                    data.participants.find(
-                        function (uid) {
-
-                            return uid !== user.uid;
-
-                        }
-                    );
-
-
-                let otherName =
-                    "User";
-
-
-                if (otherUid) {
-
-                    try {
-
-                        const userSnap =
-                            await getDoc(
-                                doc(
-                                    db,
-                                    "users",
-                                    otherUid
-                                )
-                            );
-
-
-                        if (
-                            userSnap.exists()
-                        ) {
-
-                            const otherUser =
-                                userSnap.data();
-
-                            otherName =
-                                otherUser.fullname ||
-                                otherUser.email ||
-                                "User";
-                        }
-
-                    } catch (error) {
-
-                        console.error(
-                            "User lookup error:",
-                            error
-                        );
-                    }
-                }
-
-
-                const item =
-                    document.createElement(
-                        "a"
-                    );
-
-
-                item.className =
-                    "conversation-item";
-
-
-                item.href =
-                    "messages.html?seller=" +
-                    encodeURIComponent(
-                        otherUid || ""
-                    ) +
-                    "&product=" +
-                    encodeURIComponent(
-                        data.productId || ""
-                    );
-
-
-                item.innerHTML =
-
-                    '<div class="conversation-avatar">' +
-
-                        escapeHtml(
-                            otherName
-                                .charAt(0)
-                                .toUpperCase()
-                        ) +
-
-                    '</div>' +
-
-                    '<div class="conversation-info">' +
-
-                        '<h3>' +
-
-                            escapeHtml(
-                                otherName
-                            ) +
-
-                        '</h3>' +
-
-                        '<p>' +
-
-                            escapeHtml(
-                                data.lastMessage ||
-                                data.productName ||
-                                "Conversation"
-                            ) +
-
-                        '</p>' +
-
-                    '</div>';
-
-
-                conversationList.appendChild(
-                    item
-                );
-            }
-
-        },
-
-        function (error) {
-
-            console.error(
-                "Conversation listener error:",
-                error
-            );
-
-
-            conversationList.innerHTML =
-
-                '<p class="empty-state">' +
-
-                    'Unable to load conversations.' +
-
-                    '<br><br>' +
-
-                    escapeHtml(
-                        error.code || ""
-                    ) +
-
-                    '<br>' +
-
-                    escapeHtml(
-                        error.message || ""
-                    ) +
-
-                '</p>';
-        }
-    );
-}
-
-
-/* =========================================================
-   HTML PROTECTION
-   ========================================================= */
-
-function escapeHtml(value) {
-
-    return String(value)
-
-        .replace(
-            /&/g,
-            "&amp;"
-        )
-
-        .replace(
-            /</g,
-            "&lt;"
-        )
-
-        .replace(
-            />/g,
-            "&gt;"
-        )
-
-        .replace(
-            /"/g,
-            "&quot;"
-        )
-
-        .replace(
-            /'/g,
-            "&#039;"
-        );
-}
-
-
-/* =========================================================
-   START MESSAGING
-   ========================================================= */
-
-onAuthStateChanged(
-    auth,
-    function (user) {
-
-        if (
-            !document.getElementById(
-                "conversationList"
-            )
-        ) {
-
-            return;
-        }
-
-
-        if (!user) {
-
-            alert(
-                "Please log in to use messages."
-            );
-
-            window.location.href =
-                "login.html";
-
-            return;
-        }
-
-
-        initMessagesPage(user);
 
     }
-);
+
+}
+
+
+
 /* =========================================================
-   GLOBAL FUNCTIONS
+   GLOBAL WHATSAPP FUNCTIONS
    ========================================================= */
 
-window.login = login;
-window.register = register;
-window.logout = logout;
-window.deleteMyListing = deleteMyListing;
-window.uploadProfileImage = uploadProfileImage;
-window.uploadCoverImage = uploadCoverImage
+window.contactSellerOnWhatsApp =
+    contactSellerOnWhatsApp;
+
+
+window.contactSellerFromProduct =
+    contactSellerFromProduct;
+
+
+window.openSellerWhatsApp =
+    openSellerWhatsApp;
