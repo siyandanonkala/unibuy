@@ -13,30 +13,80 @@ window.UniBuySwipe = (function () {
 
     const RENDER_RADIUS = 1;
 
+    /* =========================================================
+       HELPERS
+       ========================================================= */
+
     function formatPrice(amount) {
-        return "R " + Number(amount).toLocaleString("en-ZA");
+        const number = Number(amount);
+
+        if (isNaN(number)) {
+            return "R 0";
+        }
+
+        return "R " + number.toLocaleString("en-ZA");
     }
 
+
+    /* =========================================================
+       OPEN VIEWER
+       ========================================================= */
+
     function open(index, products) {
+
+        if (!viewer || !track) {
+            console.error("UniBuy Swipe viewer not found.");
+            return;
+        }
+
+        if (!Array.isArray(products) || !products.length) {
+            console.warn("No products available for swipe viewer.");
+            return;
+        }
+
         originalProducts = products.slice();
         feed = products.slice();
-        currentIndex = index;
+
+        currentIndex = Math.max(
+            0,
+            Math.min(index, feed.length - 1)
+        );
+
         photoIndex = {};
         likedIds = new Set();
         notInterestedCategories = new Set();
 
         viewer.classList.remove("hidden");
-        viewer.setAttribute("aria-hidden", "false");
+
+        viewer.setAttribute(
+            "aria-hidden",
+            "false"
+        );
+
         document.body.style.overflow = "hidden";
 
         renderSlides();
         preloadAround(currentIndex);
+
         attachGestures();
     }
 
+
+    /* =========================================================
+       CLOSE VIEWER
+       ========================================================= */
+
     function close() {
+
+        if (!viewer || !track) return;
+
         viewer.classList.add("hidden");
-        viewer.setAttribute("aria-hidden", "true");
+
+        viewer.setAttribute(
+            "aria-hidden",
+            "true"
+        );
+
         document.body.style.overflow = "";
 
         track.innerHTML = "";
@@ -44,33 +94,82 @@ window.UniBuySwipe = (function () {
         detachGestures();
     }
 
+
+    /* =========================================================
+       EXTEND FEED
+       ========================================================= */
+
     function extendFeedIfNeeded() {
-        if (!originalProducts.length) return;
 
-        while (feed.length < currentIndex + RENDER_RADIUS + 3) {
+        if (!originalProducts.length) {
+            return;
+        }
 
-            const pool = originalProducts.filter(function (p) {
-                return !notInterestedCategories.has(p.category);
-            });
+        while (
+            feed.length <
+            currentIndex +
+            RENDER_RADIUS +
+            3
+        ) {
 
-            const source = pool.length ? pool : originalProducts;
+            const pool =
+                originalProducts.filter(function (product) {
 
-            feed.push(source[feed.length % source.length]);
+                    return !notInterestedCategories.has(
+                        product.category
+                    );
+
+                });
+
+            const source =
+                pool.length
+                    ? pool
+                    : originalProducts;
+
+            if (!source.length) {
+                break;
+            }
+
+            feed.push(
+                source[
+                    feed.length % source.length
+                ]
+            );
         }
     }
 
+
+    /* =========================================================
+       PRELOAD IMAGES
+       ========================================================= */
+
     function preloadAround(index) {
 
-        for (let i = index - 1; i <= index + 2; i++) {
+        for (
+            let i = index - 1;
+            i <= index + 2;
+            i++
+        ) {
 
-            if (i < 0 || i >= feed.length) continue;
+            if (
+                i < 0 ||
+                i >= feed.length
+            ) {
+                continue;
+            }
 
             const product = feed[i];
 
-            if (!product) continue;
+            if (!product) {
+                continue;
+            }
 
             const images =
-                (product.images && product.images.length)
+                (
+                    product.images &&
+                    Array.isArray(product.images) &&
+                    product.images.length
+                )
                     ? product.images
                     : [product.image];
 
@@ -79,15 +178,27 @@ window.UniBuySwipe = (function () {
                 if (!src) return;
 
                 const img = new Image();
+
                 img.src = src;
 
             });
         }
     }
 
-    function actionButton(action, icon, label, activeClass) {
+
+    /* =========================================================
+       ACTION BUTTON
+       ========================================================= */
+
+    function actionButton(
+        action,
+        icon,
+        label,
+        activeClass
+    ) {
 
         return (
+
             '<button class="swipe-action-btn ' +
             (activeClass || "") +
             '" data-action="' +
@@ -108,16 +219,33 @@ window.UniBuySwipe = (function () {
         );
     }
 
+
+    /* =========================================================
+       BUILD SLIDE
+       ========================================================= */
+
     function buildSlide(product, pos) {
 
-        const slide = document.createElement("div");
+        const slide =
+            document.createElement("div");
 
-        slide.className = "swipe-slide";
-        slide.style.top = (pos * 100) + "%";
+        slide.className =
+            "swipe-slide";
+
+        slide.style.top =
+            (pos * 100) + "%";
+
         slide.dataset.pos = pos;
 
+
+        /* ---------- IMAGES ---------- */
+
         const images =
-            (product.images && product.images.length)
+            (
+                product.images &&
+                Array.isArray(product.images) &&
+                product.images.length
+            )
                 ? product.images
                 : [product.image];
 
@@ -126,34 +254,48 @@ window.UniBuySwipe = (function () {
         const photosWrap =
             document.createElement("div");
 
-        photosWrap.className = "swipe-photos";
+        photosWrap.className =
+            "swipe-photos";
 
         images.forEach(function (src) {
 
             const photo =
                 document.createElement("div");
 
-            photo.className = "swipe-photo";
+            photo.className =
+                "swipe-photo";
+
+            const fallback =
+                "https://placehold.co/480x854/1a1a1a/ffffff?text=" +
+                encodeURIComponent(
+                    product.name || "UniBuy"
+                );
 
             photo.style.backgroundImage =
                 "url('" +
-                src +
-                "'), url('https://placehold.co/480x854/1a1a1a/ffffff?text=" +
-                encodeURIComponent(product.name) +
+                (src || fallback) +
+                "'), url('" +
+                fallback +
                 "')";
 
             photosWrap.appendChild(photo);
 
         });
 
-        slide.appendChild(photosWrap);
+        slide.appendChild(
+            photosWrap
+        );
+
+
+        /* ---------- PHOTO DOTS ---------- */
 
         if (images.length > 1) {
 
             const dots =
                 document.createElement("div");
 
-            dots.className = "swipe-dots";
+            dots.className =
+                "swipe-dots";
 
             images.forEach(function (_, i) {
 
@@ -161,29 +303,41 @@ window.UniBuySwipe = (function () {
                     document.createElement("span");
 
                 if (i === 0) {
-                    dot.classList.add("active");
+
+                    dot.classList.add(
+                        "active"
+                    );
+
                 }
 
                 dots.appendChild(dot);
 
             });
 
-            slide.appendChild(dots);
+            slide.appendChild(
+                dots
+            );
         }
+
+
+        /* ---------- PRODUCT INFORMATION ---------- */
 
         const info =
             document.createElement("div");
 
-        info.className = "swipe-info";
+        info.className =
+            "swipe-info";
 
         info.innerHTML =
 
-            (product.premium
-                ? '<span class="swipe-premium-badge">PREMIUM</span>'
-                : "") +
+            (
+                product.premium
+                    ? '<span class="swipe-premium-badge">PREMIUM</span>'
+                    : ""
+            ) +
 
             '<div class="swipe-name">' +
-                product.name +
+                (product.name || "Product") +
             "</div>" +
 
             '<div class="swipe-price">' +
@@ -193,39 +347,45 @@ window.UniBuySwipe = (function () {
             '<div class="swipe-meta">' +
 
                 '<span>' +
-                    '<i class="fas fa-store"></i>' +
-                    product.seller +
-                '</span>' +
+                    '<i class="fas fa-store"></i> ' +
+                    (product.seller || "Seller") +
+                "</span>" +
 
                 '<span>' +
-                    '<i class="fas fa-location-dot"></i>' +
-                    product.location +
-                '</span>' +
+                    '<i class="fas fa-location-dot"></i> ' +
+                    (product.location || "Location not provided") +
+                "</span>" +
 
             "</div>" +
 
             '<div class="swipe-description">' +
-                product.description +
+                (product.description || "No description provided.") +
             "</div>" +
 
             '<div class="swipe-cta-row">' +
 
-                '<button class="swipe-buy-btn" data-action="buy">' +
-                    "Buy Now" +
-                "</button>" +
-
                 '<button class="swipe-chat-btn" data-action="chat">' +
+
+                    '<i class="fab fa-whatsapp"></i> ' +
+
                     "Chat with Seller" +
+
                 "</button>" +
 
             "</div>";
 
-        slide.appendChild(info);
+        slide.appendChild(
+            info
+        );
+
+
+        /* ---------- ACTIONS ---------- */
 
         const actions =
             document.createElement("div");
 
-        actions.className = "swipe-actions";
+        actions.className =
+            "swipe-actions";
 
         actions.innerHTML =
 
@@ -244,7 +404,10 @@ window.UniBuySwipe = (function () {
                 "Save",
                 (
                     window.UniBuySaved &&
-                    window.UniBuySaved.isSaved(product.id)
+                    window.UniBuySaved.isSaved &&
+                    window.UniBuySaved.isSaved(
+                        product.id
+                    )
                 )
                     ? "saved"
                     : ""
@@ -264,83 +427,180 @@ window.UniBuySwipe = (function () {
                 ""
             );
 
-        slide.appendChild(actions);
+        slide.appendChild(
+            actions
+        );
+
+
+        /* ---------- TOAST ---------- */
 
         const toast =
             document.createElement("div");
 
-        toast.className = "swipe-toast";
+        toast.className =
+            "swipe-toast";
 
-        slide.appendChild(toast);
+        slide.appendChild(
+            toast
+        );
 
-        actions.addEventListener("click", function (e) {
 
-            const btn =
-                e.target.closest(".swipe-action-btn");
+        /* ---------- ACTION EVENTS ---------- */
 
-            if (!btn) return;
+        actions.addEventListener(
+            "click",
+            function (e) {
 
-            handleAction(
-                btn.dataset.action,
-                product,
-                btn,
-                toast
-            );
+                const btn =
+                    e.target.closest(
+                        ".swipe-action-btn"
+                    );
 
-        });
+                if (!btn) return;
 
-        info.addEventListener("click", function (e) {
+                handleAction(
+                    btn.dataset.action,
+                    product,
+                    btn,
+                    toast
+                );
 
-            const btn =
-                e.target.closest("button[data-action]");
+            }
+        );
 
-            if (!btn) return;
 
-            handleAction(
-                btn.dataset.action,
-                product,
-                btn,
-                toast
-            );
+        info.addEventListener(
+            "click",
+            function (e) {
 
-        });
+                const btn =
+                    e.target.closest(
+                        "button[data-action]"
+                    );
+
+                if (!btn) return;
+
+                handleAction(
+                    btn.dataset.action,
+                    product,
+                    btn,
+                    toast
+                );
+
+            }
+        );
+
 
         return slide;
     }
 
-    function showToast(toastEl, message) {
 
-        toastEl.textContent = message;
+    /* =========================================================
+       TOAST
+       ========================================================= */
 
-        toastEl.classList.add("show");
+    function showToast(
+        toastEl,
+        message
+    ) {
 
-        setTimeout(function () {
-            toastEl.classList.remove("show");
-        }, 1400);
+        if (!toastEl) return;
+
+        toastEl.textContent =
+            message;
+
+        toastEl.classList.add(
+            "show"
+        );
+
+        setTimeout(
+            function () {
+
+                toastEl.classList.remove(
+                    "show"
+                );
+
+            },
+            1400
+        );
     }
 
-    function handleAction(action, product, btn, toastEl) {
+
+    /* =========================================================
+       HANDLE ACTION
+       ========================================================= */
+
+    function handleAction(
+        action,
+        product,
+        btn,
+        toastEl
+    ) {
+
+
+        /* =========================
+           LIKE
+        ========================= */
 
         if (action === "like") {
 
-            if (likedIds.has(product.id)) {
+            if (
+                likedIds.has(
+                    product.id
+                )
+            ) {
 
-                likedIds.delete(product.id);
-                btn.classList.remove("liked");
+                likedIds.delete(
+                    product.id
+                );
+
+                btn.classList.remove(
+                    "liked"
+                );
 
             } else {
 
-                likedIds.add(product.id);
-                btn.classList.add("liked");
+                likedIds.add(
+                    product.id
+                );
+
+                btn.classList.add(
+                    "liked"
+                );
 
             }
 
-        } else if (action === "save") {
+            return;
+        }
 
-            const nowSaved =
-                window.UniBuySaved
-                    ? window.UniBuySaved.toggleSaved(product.id)
-                    : !btn.classList.contains("saved");
+
+        /* =========================
+           SAVE
+        ========================= */
+
+        if (action === "save") {
+
+            let nowSaved;
+
+            if (
+                window.UniBuySaved &&
+                typeof window.UniBuySaved.toggleSaved ===
+                    "function"
+            ) {
+
+                nowSaved =
+                    window.UniBuySaved.toggleSaved(
+                        product.id
+                    );
+
+            } else {
+
+                nowSaved =
+                    !btn.classList.contains(
+                        "saved"
+                    );
+
+            }
 
             btn.classList.toggle(
                 "saved",
@@ -354,36 +614,74 @@ window.UniBuySwipe = (function () {
                     : "Removed from saved items"
             );
 
-        } else if (action === "share") {
+            return;
+        }
+
+
+        /* =========================
+           SHARE
+        ========================= */
+
+        if (action === "share") {
 
             const shareData = {
-                title: product.name,
+
+                title:
+                    product.name ||
+                    "UniBuy Product",
+
                 text:
-                    product.name +
+                    (product.name || "Product") +
                     " - " +
-                    formatPrice(product.price) +
+                    formatPrice(
+                        product.price
+                    ) +
                     " on UniBuy"
+
             };
 
-            if (navigator.share) {
+            if (
+                navigator.share
+            ) {
 
-                navigator.share(shareData)
-                    .catch(function () {});
+                navigator.share(
+                    shareData
+                ).catch(
+                    function () {}
+                );
 
             } else {
 
                 showToast(
                     toastEl,
-                    "Share: " + shareData.text
+                    "Share: " +
+                    shareData.text
                 );
 
             }
 
-        } else if (action === "not-interested") {
+            return;
+        }
 
-            notInterestedCategories.add(
+
+        /* =========================
+           NOT INTERESTED
+        ========================= */
+
+        if (
+            action ===
+            "not-interested"
+        ) {
+
+            if (
                 product.category
-            );
+            ) {
+
+                notInterestedCategories.add(
+                    product.category
+                );
+
+            }
 
             showToast(
                 toastEl,
@@ -395,26 +693,33 @@ window.UniBuySwipe = (function () {
                 350
             );
 
-        } else if (action === "buy") {
+            return;
+        }
+
+
+        /* =========================
+           BUY
+        ========================= */
+
+        if (action === "buy") {
 
             showToast(
                 toastEl,
                 "Buy Now flow coming soon"
             );
 
-        } else if (action === "chat") {
+            return;
+        }
 
-            /*
-             * We only need the product ID.
-             *
-             * messages.html will load the product from Firestore
-             * and determine the seller using sellerUid,
-             * sellerEmail, or seller name.
-             *
-             * This makes both NEW and OLD listings work.
-             */
 
-            if (!product.id) {
+        /* =========================
+           CHAT WITH SELLER
+           WHATSAPP
+        ========================= */
+
+        if (action === "chat") {
+
+            if (!product || !product.id) {
 
                 showToast(
                     toastEl,
@@ -424,17 +729,53 @@ window.UniBuySwipe = (function () {
                 return;
             }
 
-            window.location.href =
-                "messages.html?product=" +
-                encodeURIComponent(product.id);
+
+            /*
+             * app.js provides this function.
+             *
+             * It will use the product information
+             * and Firebase to find the seller's
+             * WhatsApp number.
+             */
+
+            if (
+                typeof window.contactSellerOnWhatsApp ===
+                "function"
+            ) {
+
+                window.contactSellerOnWhatsApp(
+                    product
+                );
+
+            } else {
+
+                showToast(
+                    toastEl,
+                    "WhatsApp contact is unavailable"
+                );
+
+                console.error(
+                    "contactSellerOnWhatsApp() is not available."
+                );
+
+            }
+
+            return;
         }
     }
+
+
+    /* =========================================================
+       RENDER SLIDES
+       ========================================================= */
 
     function renderSlides() {
 
         extendFeedIfNeeded();
 
-        track.classList.add("no-transition");
+        track.classList.add(
+            "no-transition"
+        );
 
         track.style.transform =
             "translateY(0%)";
@@ -442,22 +783,37 @@ window.UniBuySwipe = (function () {
         track.innerHTML = "";
 
         for (
-            let i = currentIndex - RENDER_RADIUS;
-            i <= currentIndex + RENDER_RADIUS;
+            let i =
+                currentIndex -
+                RENDER_RADIUS;
+
+            i <=
+                currentIndex +
+                RENDER_RADIUS;
+
             i++
         ) {
 
-            if (i < 0) continue;
+            if (i < 0) {
+                continue;
+            }
 
-            const product = feed[i];
+            const product =
+                feed[i];
 
-            if (!product) continue;
+            if (!product) {
+                continue;
+            }
 
             const pos =
-                i - currentIndex;
+                i -
+                currentIndex;
 
             track.appendChild(
-                buildSlide(product, pos)
+                buildSlide(
+                    product,
+                    pos
+                )
             );
         }
 
@@ -468,41 +824,69 @@ window.UniBuySwipe = (function () {
         );
     }
 
+
+    /* =========================================================
+       NEXT
+       ========================================================= */
+
     function goToNext() {
 
         currentIndex += 1;
 
         extendFeedIfNeeded();
 
-        animateTo(-1, function () {
+        animateTo(
+            -1,
+            function () {
 
-            renderSlides();
+                renderSlides();
 
-            preloadAround(
-                currentIndex
-            );
+                preloadAround(
+                    currentIndex
+                );
 
-        });
+            }
+        );
     }
+
+
+    /* =========================================================
+       PREVIOUS
+       ========================================================= */
 
     function goToPrevious() {
 
-        if (currentIndex <= 0) return;
+        if (
+            currentIndex <= 0
+        ) {
+            return;
+        }
 
         currentIndex -= 1;
 
-        animateTo(1, function () {
+        animateTo(
+            1,
+            function () {
 
-            renderSlides();
+                renderSlides();
 
-            preloadAround(
-                currentIndex
-            );
+                preloadAround(
+                    currentIndex
+                );
 
-        });
+            }
+        );
     }
 
-    function animateTo(direction, done) {
+
+    /* =========================================================
+       ANIMATION
+       ========================================================= */
+
+    function animateTo(
+        direction,
+        done
+    ) {
 
         track.classList.remove(
             "no-transition"
@@ -513,37 +897,56 @@ window.UniBuySwipe = (function () {
             (direction * 100) +
             "%)";
 
-        setTimeout(function () {
+        setTimeout(
+            function () {
 
-            track.classList.add(
-                "no-transition"
-            );
+                track.classList.add(
+                    "no-transition"
+                );
 
-            done();
+                done();
 
-            track.offsetHeight;
+                track.offsetHeight;
 
-            track.classList.remove(
-                "no-transition"
-            );
+                track.classList.remove(
+                    "no-transition"
+                );
 
-        }, 400);
+            },
+            400
+        );
     }
 
-    function shiftPhoto(slideEl, delta) {
+
+    /* =========================================================
+       SHIFT PRODUCT PHOTO
+       ========================================================= */
+
+    function shiftPhoto(
+        slideEl,
+        delta
+    ) {
 
         const pos =
-            Number(slideEl.dataset.pos);
+            Number(
+                slideEl.dataset.pos
+            );
 
         const photosWrap =
             slideEl.querySelector(
                 ".swipe-photos"
             );
 
+        if (!photosWrap) {
+            return;
+        }
+
         const total =
             photosWrap.children.length;
 
-        if (total <= 1) return;
+        if (total <= 1) {
+            return;
+        }
 
         let index =
             (photoIndex[pos] || 0) +
@@ -558,7 +961,8 @@ window.UniBuySwipe = (function () {
                 )
             );
 
-        photoIndex[pos] = index;
+        photoIndex[pos] =
+            index;
 
         photosWrap.style.transform =
             "translateX(-" +
@@ -570,20 +974,32 @@ window.UniBuySwipe = (function () {
                 ".swipe-dots span"
             );
 
-        dots.forEach(function (dot, i) {
+        dots.forEach(
+            function (dot, i) {
 
-            dot.classList.toggle(
-                "active",
-                i === index
-            );
+                dot.classList.toggle(
+                    "active",
+                    i === index
+                );
 
-        });
+            }
+        );
     }
+
+
+    /* =========================================================
+       TOUCH VARIABLES
+       ========================================================= */
 
     let startX = 0;
     let startY = 0;
     let isDragging = false;
     let axisLocked = null;
+
+
+    /* =========================================================
+       TOUCH START
+       ========================================================= */
 
     function onTouchStart(e) {
 
@@ -592,16 +1008,29 @@ window.UniBuySwipe = (function () {
                 ? e.touches[0]
                 : e;
 
-        startX = t.clientX;
-        startY = t.clientY;
+        startX =
+            t.clientX;
 
-        isDragging = true;
-        axisLocked = null;
+        startY =
+            t.clientY;
+
+        isDragging =
+            true;
+
+        axisLocked =
+            null;
     }
+
+
+    /* =========================================================
+       TOUCH MOVE
+       ========================================================= */
 
     function onTouchMove(e) {
 
-        if (!isDragging) return;
+        if (!isDragging) {
+            return;
+        }
 
         const t =
             e.touches
@@ -609,10 +1038,12 @@ window.UniBuySwipe = (function () {
                 : e;
 
         const dx =
-            t.clientX - startX;
+            t.clientX -
+            startX;
 
         const dy =
-            t.clientY - startY;
+            t.clientY -
+            startY;
 
         if (!axisLocked) {
 
@@ -633,15 +1064,25 @@ window.UniBuySwipe = (function () {
             axisLocked === "y" &&
             e.cancelable
         ) {
+
             e.preventDefault();
+
         }
     }
 
+
+    /* =========================================================
+       TOUCH END
+       ========================================================= */
+
     function onTouchEnd(e) {
 
-        if (!isDragging) return;
+        if (!isDragging) {
+            return;
+        }
 
-        isDragging = false;
+        isDragging =
+            false;
 
         const t =
             e.changedTouches
@@ -649,46 +1090,84 @@ window.UniBuySwipe = (function () {
                 : e;
 
         const dx =
-            t.clientX - startX;
+            t.clientX -
+            startX;
 
         const dy =
-            t.clientY - startY;
+            t.clientY -
+            startY;
 
-        const THRESHOLD = 50;
+        const THRESHOLD =
+            50;
 
-        if (axisLocked === "y") {
 
-            if (dy < -THRESHOLD) {
+        /* ---------- VERTICAL ---------- */
+
+        if (
+            axisLocked === "y"
+        ) {
+
+            if (
+                dy < -THRESHOLD
+            ) {
+
                 goToNext();
-            } else if (dy > THRESHOLD) {
+
+            } else if (
+                dy > THRESHOLD
+            ) {
+
                 goToPrevious();
+
             }
 
-        } else if (axisLocked === "x") {
+            return;
+        }
+
+
+        /* ---------- HORIZONTAL ---------- */
+
+        if (
+            axisLocked === "x"
+        ) {
 
             const slideEl =
                 e.target.closest
-                    ? e.target.closest(".swipe-slide")
+                    ? e.target.closest(
+                        ".swipe-slide"
+                    )
                     : null;
 
-            if (!slideEl) return;
+            if (!slideEl) {
+                return;
+            }
 
-            if (dx < -THRESHOLD) {
+            if (
+                dx < -THRESHOLD
+            ) {
 
                 shiftPhoto(
                     slideEl,
                     1
                 );
 
-            } else if (dx > THRESHOLD) {
+            } else if (
+                dx > THRESHOLD
+            ) {
 
                 shiftPhoto(
                     slideEl,
                     -1
                 );
+
             }
         }
     }
+
+
+    /* =========================================================
+       KEYBOARD
+       ========================================================= */
 
     function onKeyDown(e) {
 
@@ -696,17 +1175,25 @@ window.UniBuySwipe = (function () {
             viewer.classList.contains(
                 "hidden"
             )
-        ) return;
+        ) {
+            return;
+        }
 
-        if (e.key === "Escape") {
+        if (
+            e.key === "Escape"
+        ) {
 
             close();
 
-        } else if (e.key === "ArrowUp") {
+        } else if (
+            e.key === "ArrowUp"
+        ) {
 
             goToNext();
 
-        } else if (e.key === "ArrowDown") {
+        } else if (
+            e.key === "ArrowDown"
+        ) {
 
             goToPrevious();
 
@@ -728,9 +1215,15 @@ window.UniBuySwipe = (function () {
                         ? 1
                         : -1
                 );
+
             }
         }
     }
+
+
+    /* =========================================================
+       ATTACH GESTURES
+       ========================================================= */
 
     function attachGestures() {
 
@@ -757,6 +1250,11 @@ window.UniBuySwipe = (function () {
         );
     }
 
+
+    /* =========================================================
+       DETACH GESTURES
+       ========================================================= */
+
     function detachGestures() {
 
         track.removeEventListener(
@@ -780,14 +1278,30 @@ window.UniBuySwipe = (function () {
         );
     }
 
-    closeBtn.addEventListener(
-        "click",
-        close
-    );
+
+    /* =========================================================
+       CLOSE BUTTON
+       ========================================================= */
+
+    if (closeBtn) {
+
+        closeBtn.addEventListener(
+            "click",
+            close
+        );
+
+    }
+
+
+    /* =========================================================
+       PUBLIC API
+       ========================================================= */
 
     return {
+
         open: open,
         close: close
+
     };
 
 })();
