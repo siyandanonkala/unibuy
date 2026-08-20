@@ -809,13 +809,23 @@ async function loadMyFirestoreListings() {
     const container =
         document.getElementById("myListingsGrid");
 
-
     if (!container) return;
 
-
     const currentUser =
-        auth.currentUser;
+        await new Promise((resolve) => {
 
+            const unsubscribe =
+                onAuthStateChanged(
+                    auth,
+                    (user) => {
+
+                        unsubscribe();
+                        resolve(user);
+
+                    }
+                );
+
+        });
 
     if (!currentUser) {
 
