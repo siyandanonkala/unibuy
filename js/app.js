@@ -3,7 +3,8 @@ import { auth, db } from "./firebase.js";
 import {
     createUserWithEmailAndPassword,
     signInWithEmailAndPassword,
-    onAuthStateChanged
+    onAuthStateChanged,
+    signOut
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
 
 import {
@@ -21,7 +22,7 @@ import {
 
 /* =========================================================
    AUTH STATE
-   ========================================================= */
+========================================================= */
 
 onAuthStateChanged(auth, (user) => {
 
@@ -36,8 +37,7 @@ onAuthStateChanged(auth, (user) => {
             "Please log in or register before posting an item."
         );
 
-        window.location.href =
-            "login.html";
+        window.location.href = "login.html";
 
         return;
     }
@@ -50,18 +50,22 @@ onAuthStateChanged(auth, (user) => {
         !user
     ) {
 
-        window.location.href =
-            "login.html";
+        window.location.href = "login.html";
 
         return;
     }
+
+
+    /* Update sidebar when Firebase auth is ready */
+
+    updateSidebarUser(user);
 
 });
 
 
 /* =========================================================
    CONTACT FORM
-   ========================================================= */
+========================================================= */
 
 const contactForm =
     document.getElementById("contactForm");
@@ -86,21 +90,13 @@ if (contactForm) {
 async function sendContactMessage() {
 
     const name =
-        document.getElementById(
-            "contactName"
-        ).value.trim();
-
+        document.getElementById("contactName")?.value.trim() || "";
 
     const email =
-        document.getElementById(
-            "contactEmail"
-        ).value.trim();
-
+        document.getElementById("contactEmail")?.value.trim() || "";
 
     const message =
-        document.getElementById(
-            "contactMessage"
-        ).value.trim();
+        document.getElementById("contactMessage")?.value.trim() || "";
 
 
     if (
@@ -109,24 +105,19 @@ async function sendContactMessage() {
         message === ""
     ) {
 
-        alert(
-            "Please fill in all fields"
-        );
+        alert("Please fill in all fields");
 
         return;
     }
 
 
     const submitBtn =
-        document.getElementById(
-            "contactSubmit"
-        );
+        document.getElementById("contactSubmit");
 
 
     if (submitBtn) {
 
-        submitBtn.disabled =
-            true;
+        submitBtn.disabled = true;
 
     }
 
@@ -134,10 +125,7 @@ async function sendContactMessage() {
     try {
 
         await addDoc(
-            collection(
-                db,
-                "contactMessages"
-            ),
+            collection(db, "contactMessages"),
             {
                 name: name,
                 email: email,
@@ -157,19 +145,19 @@ async function sendContactMessage() {
 
     } catch (error) {
 
-        console.error(error);
-
-        alert(
-            error.message
+        console.error(
+            "Contact message error:",
+            error
         );
+
+        alert(error.message);
 
 
     } finally {
 
         if (submitBtn) {
 
-            submitBtn.disabled =
-                false;
+            submitBtn.disabled = false;
 
         }
 
@@ -180,38 +168,26 @@ async function sendContactMessage() {
 
 /* =========================================================
    AUTH: REGISTER
-   ========================================================= */
+========================================================= */
 
 async function register() {
 
     const fullname =
-        document.getElementById(
-            "fullname"
-        ).value.trim();
-
+        document.getElementById("fullname")?.value.trim() || "";
 
     const email =
-        document.getElementById(
-            "email"
-        ).value.trim();
-
+        document.getElementById("email")?.value.trim() || "";
 
     const phoneInput =
-        document.getElementById(
-            "phone"
-        );
-
+        document.getElementById("phone");
 
     const phone =
         phoneInput
             ? phoneInput.value.trim()
             : "";
 
-
     const password =
-        document.getElementById(
-            "password"
-        ).value;
+        document.getElementById("password")?.value || "";
 
 
     /* ---------- Validation ---------- */
@@ -231,13 +207,10 @@ async function register() {
     }
 
 
-    /* ---------- Basic phone validation ---------- */
+    /* ---------- Phone validation ---------- */
 
     const phoneDigits =
-        phone.replace(
-            /\D/g,
-            ""
-        );
+        phone.replace(/\D/g, "");
 
 
     if (phoneDigits.length < 10) {
@@ -266,7 +239,7 @@ async function register() {
             userCredential.user;
 
 
-        /* ---------- Save profile ---------- */
+        /* ---------- Create user profile ---------- */
 
         await setDoc(
             doc(
@@ -275,20 +248,26 @@ async function register() {
                 user.uid
             ),
             {
-
-                fullname:
-                    fullname,
-
-                email:
-                    email,
-
-                phone:
-                    phone,
-
-                bio:
-                    ""
-
+                fullname: fullname,
+                email: email,
+                phone: phone,
+                bio: ""
             }
+        );
+
+
+        /*
+           Firebase automatically signs the user in.
+        */
+
+        localStorage.setItem(
+            "loggedInUser",
+            fullname
+        );
+
+        localStorage.setItem(
+            "loggedInEmail",
+            email
         );
 
 
@@ -296,11 +275,6 @@ async function register() {
             "Account created successfully!"
         );
 
-
-        /*
-           Firebase automatically signs the user in
-           after registration.
-        */
 
         window.location.href =
             "index.html";
@@ -313,10 +287,7 @@ async function register() {
             error
         );
 
-
-        alert(
-            error.message
-        );
+        alert(error.message);
 
     }
 
@@ -325,20 +296,15 @@ async function register() {
 
 /* =========================================================
    AUTH: LOGIN
-   ========================================================= */
+========================================================= */
 
 async function login() {
 
     const emailInput =
-        document.getElementById(
-            "loginEmail"
-        );
-
+        document.getElementById("loginEmail");
 
     const passwordInput =
-        document.getElementById(
-            "loginPassword"
-        );
+        document.getElementById("loginPassword");
 
 
     if (
@@ -356,7 +322,6 @@ async function login() {
 
     const email =
         emailInput.value.trim();
-
 
     const password =
         passwordInput.value;
@@ -450,10 +415,7 @@ async function login() {
             error
         );
 
-
-        alert(
-            error.message
-        );
+        alert(error.message);
 
     }
 
@@ -462,12 +424,10 @@ async function login() {
 
 /* =========================================================
    LOGIN BUTTON
-   ========================================================= */
+========================================================= */
 
 const loginButton =
-    document.getElementById(
-        "loginButton"
-    );
+    document.getElementById("loginButton");
 
 
 if (loginButton) {
@@ -482,7 +442,7 @@ if (loginButton) {
 
 /* =========================================================
    GLOBAL AUTH FUNCTIONS
-   ========================================================= */
+========================================================= */
 
 window.login =
     login;
@@ -493,9 +453,23 @@ window.register =
 
 /* =========================================================
    AUTH: LOGOUT
-   ========================================================= */
+========================================================= */
 
-function logout() {
+async function logout() {
+
+    try {
+
+        await signOut(auth);
+
+    } catch (error) {
+
+        console.error(
+            "Logout error:",
+            error
+        );
+
+    }
+
 
     localStorage.removeItem(
         "loggedInUser"
@@ -524,97 +498,110 @@ window.logout =
 
 /* =========================================================
    SIDEBAR USER
-   ========================================================= */
+========================================================= */
+
+function updateSidebarUser(firebaseUser = null) {
+
+    const sidebarUser =
+        document.getElementById("sidebarUser");
+
+
+    if (!sidebarUser) return;
+
+
+    const storedUser =
+        localStorage.getItem("loggedInUser");
+
+
+    if (firebaseUser || storedUser) {
+
+        const displayName =
+            storedUser ||
+            firebaseUser?.email ||
+            "User";
+
+
+        sidebarUser.innerHTML =
+            `<h3>👋 ${displayName}</h3>` +
+            `<p>Welcome back!</p>`;
+
+    } else {
+
+        sidebarUser.innerHTML =
+            `<h3>👤 Guest</h3>` +
+            `<p>Please login</p>`;
+
+    }
+
+}
+
+
+/* =========================================================
+   SIDEBAR / LOGIN LINK
+========================================================= */
 
 window.addEventListener(
     "load",
     function () {
 
-        const user =
-            localStorage.getItem(
-                "loggedInUser"
-            );
-
-
-        const sidebarUser =
-            document.getElementById(
-                "sidebarUser"
-            );
-
-
-        if (sidebarUser) {
-
-            sidebarUser.innerHTML =
-                user
-                    ? `<h3>👋 ${user}</h3><p>Welcome back!</p>`
-                    : `<h3>👤 Guest</h3><p>Please login</p>`;
-
-        }
+        updateSidebarUser(auth.currentUser);
 
 
         const loginLink =
-            document.getElementById(
-                "loginLink"
-            );
+            document.getElementById("loginLink");
 
 
-        if (loginLink) {
-
-            if (user) {
-
-                loginLink.innerHTML =
-                    '<i class="fas fa-sign-out-alt"></i> Logout';
+        if (!loginLink) return;
 
 
-                loginLink.style.color =
-                    "#d32f2f";
+        const user =
+            auth.currentUser;
 
 
-                loginLink.style.fontWeight =
-                    "bold";
+        if (user) {
+
+            const displayName =
+                localStorage.getItem(
+                    "loggedInUser"
+                ) ||
+                user.email;
 
 
-                loginLink.href =
-                    "javascript:void(0)";
+            loginLink.innerHTML =
+                '<i class="fas fa-sign-out-alt"></i> Logout';
 
 
-                loginLink.onclick =
-                    function () {
-
-                        localStorage.removeItem(
-                            "loggedInUser"
-                        );
+            loginLink.style.color =
+                "#d32f2f";
 
 
-                        localStorage.removeItem(
-                            "loggedInEmail"
-                        );
+            loginLink.style.fontWeight =
+                "bold";
 
 
-                        alert(
-                            "Logged out"
-                        );
+            loginLink.href =
+                "javascript:void(0)";
 
 
-                        window.location.href =
-                            "index.html";
+            loginLink.onclick =
+                function () {
 
-                    };
+                    logout();
 
-            } else {
+                };
 
-                loginLink.innerHTML =
-                    '<i class="fas fa-sign-in-alt"></i> Login';
+        } else {
 
-
-                loginLink.href =
-                    "login.html";
+            loginLink.innerHTML =
+                '<i class="fas fa-sign-in-alt"></i> Login';
 
 
-                loginLink.onclick =
-                    null;
+            loginLink.href =
+                "login.html";
 
-            }
+
+            loginLink.onclick =
+                null;
 
         }
 
@@ -624,12 +611,10 @@ window.addEventListener(
 
 /* =========================================================
    SELL ITEM
-   ========================================================= */
+========================================================= */
 
 const productForm =
-    document.getElementById(
-        "productForm"
-    );
+    document.getElementById("productForm");
 
 
 if (productForm) {
@@ -660,56 +645,39 @@ async function postProduct() {
             "Please login first"
         );
 
-
         window.location.href =
             "login.html";
-
 
         return;
     }
 
 
     const name =
-        document.getElementById(
-            "productName"
-        ).value.trim();
-
+        document.getElementById("productName")?.value.trim() || "";
 
     const price =
-        document.getElementById(
-            "productPrice"
-        ).value;
-
+        document.getElementById("productPrice")?.value || "";
 
     const description =
-        document.getElementById(
-            "productDescription"
-        ).value.trim();
+        document.getElementById("productDescription")?.value.trim() || "";
 
+    const imageInput =
+        document.getElementById("productImage");
 
     const imageFile =
-        document.getElementById(
-            "productImage"
-        ).files[0];
-
+        imageInput?.files?.[0] || null;
 
     const categoryField =
-        document.getElementById(
-            "productCategory"
-        );
-
+        document.getElementById("productCategory");
 
     const locationField =
-        document.getElementById(
-            "productLocation"
-        );
+        document.getElementById("productLocation");
 
 
     const category =
         categoryField
             ? categoryField.value
             : "";
-
 
     const location =
         locationField
@@ -742,11 +710,9 @@ async function postProduct() {
                     ),
                     {
 
-                        name:
-                            name,
+                        name: name,
 
-                        price:
-                            Number(price),
+                        price: Number(price),
 
                         description:
                             description,
@@ -793,12 +759,12 @@ async function postProduct() {
 
             } catch (error) {
 
-                console.error(error);
-
-
-                alert(
-                    error.message
+                console.error(
+                    "Product posting error:",
+                    error
                 );
+
+                alert(error.message);
 
             }
 
@@ -836,14 +802,12 @@ async function postProduct() {
 
 /* =========================================================
    MY LISTINGS
-   ========================================================= */
+========================================================= */
 
 async function loadMyFirestoreListings() {
 
     const container =
-        document.getElementById(
-            "myListingsGrid"
-        );
+        document.getElementById("myListingsGrid");
 
 
     if (!container) return;
@@ -1029,6 +993,11 @@ async function deleteMyListing(id) {
 
     } catch (error) {
 
+        console.error(
+            "Delete listing error:",
+            error
+        );
+
         alert(
             error.message
         );
@@ -1058,7 +1027,7 @@ if (
 
 /* =========================================================
    PROFILE / SETTINGS
-   ========================================================= */
+========================================================= */
 
 async function loadProfile() {
 
@@ -1274,56 +1243,98 @@ async function loadProfile() {
         }
 
 
-        /* ---------- Profile image ---------- */
+        /* =================================================
+           PROFILE IMAGE
+
+           IMPORTANT FIX:
+           The image is now stored separately for each
+           Firebase user using their UID.
+
+           Example:
+
+           profileImage_ABC123
+           profileImage_XYZ789
+
+           Therefore User A cannot load User B's image.
+        ================================================= */
+
+        const profileImageKey =
+            "profileImage_" +
+            currentUser.uid;
+
 
         const savedImage =
             localStorage.getItem(
+                profileImageKey
+            );
+
+
+        const profileImage =
+            document.getElementById(
                 "profileImage"
             );
 
 
-        if (savedImage) {
+        if (
+            savedImage &&
+            profileImage
+        ) {
 
-            const profileImage =
-                document.getElementById(
-                    "profileImage"
-                );
-
-
-            if (profileImage) {
-
-                profileImage.src =
-                    savedImage;
-
-            }
+            profileImage.src =
+                savedImage;
 
         }
 
 
-        /* ---------- Cover image ---------- */
+        /* =================================================
+           COVER IMAGE
+
+           Also made user-specific.
+        ================================================= */
+
+        const coverImageKey =
+            "coverImage_" +
+            currentUser.uid;
+
 
         const savedCover =
             localStorage.getItem(
+                coverImageKey
+            );
+
+
+        const coverImage =
+            document.getElementById(
                 "coverImage"
             );
 
 
-        if (savedCover) {
+        if (
+            savedCover &&
+            coverImage
+        ) {
 
-            const coverImage =
-                document.getElementById(
-                    "coverImage"
-                );
-
-
-            if (coverImage) {
-
-                coverImage.src =
-                    savedCover;
-
-            }
+            coverImage.src =
+                savedCover;
 
         }
+
+
+        /* =================================================
+           REMOVE OLD GLOBAL PROFILE IMAGE
+
+           This prevents the old shared profileImage key
+           from continuing to affect the application.
+        ================================================= */
+
+        localStorage.removeItem(
+            "profileImage"
+        );
+
+
+        localStorage.removeItem(
+            "coverImage"
+        );
 
 
     } catch (error) {
@@ -1345,7 +1356,7 @@ async function loadProfile() {
 
 /* =========================================================
    START PROFILE / SETTINGS
-   ========================================================= */
+========================================================= */
 
 if (
     document.getElementById(
@@ -1371,7 +1382,7 @@ if (
 
 /* =========================================================
    SAVE BIO
-   ========================================================= */
+========================================================= */
 
 async function saveBio() {
 
@@ -1474,9 +1485,13 @@ async function saveBio() {
 }
 
 
+window.saveBio =
+    saveBio;
+
+
 /* =========================================================
    SAVE WHATSAPP NUMBER
-   ========================================================= */
+========================================================= */
 
 async function saveWhatsAppNumber() {
 
@@ -1628,31 +1643,81 @@ async function saveWhatsAppNumber() {
 }
 
 
-/* =========================================================
-   GLOBAL SETTINGS FUNCTIONS
-   ========================================================= */
-
-window.saveBio =
-    saveBio;
-
-
 window.saveWhatsAppNumber =
     saveWhatsAppNumber;
 
 
 /* =========================================================
    PROFILE IMAGE
-   ========================================================= */
+========================================================= */
 
 function uploadProfileImage() {
 
-    const file =
+    const currentUser =
+        auth.currentUser;
+
+
+    if (!currentUser) {
+
+        alert(
+            "Please login first."
+        );
+
+        return;
+    }
+
+
+    const input =
         document.getElementById(
             "profileImageInput"
-        ).files[0];
+        );
+
+
+    if (!input) return;
+
+
+    const file =
+        input.files?.[0];
 
 
     if (!file) return;
+
+
+    /* ---------- Basic image validation ---------- */
+
+    if (
+        !file.type.startsWith("image/")
+    ) {
+
+        alert(
+            "Please select an image file."
+        );
+
+        input.value = "";
+
+        return;
+    }
+
+
+    /*
+       Keep localStorage under control.
+
+       Very large images can exceed browser storage limits.
+       2 MB is a reasonable limit for this local-only system.
+    */
+
+    if (
+        file.size > 2 * 1024 * 1024
+    ) {
+
+        alert(
+            "Please choose an image smaller than 2 MB."
+        );
+
+        input.value = "";
+
+        return;
+    }
 
 
     const reader =
@@ -1662,11 +1727,53 @@ function uploadProfileImage() {
     reader.onload =
         function (e) {
 
-            localStorage.setItem(
-                "profileImage",
-                e.target.result
-            );
+            const imageData =
+                e.target.result;
 
+
+            /* =================================================
+               CRITICAL FIX
+
+               BEFORE:
+
+               localStorage.setItem(
+                   "profileImage",
+                   imageData
+               );
+
+               AFTER:
+
+               Each Firebase account gets its own key.
+            ================================================= */
+
+            const profileImageKey =
+                "profileImage_" +
+                currentUser.uid;
+
+
+            try {
+
+                localStorage.setItem(
+                    profileImageKey,
+                    imageData
+                );
+
+            } catch (error) {
+
+                console.error(
+                    "Could not save profile image:",
+                    error
+                );
+
+                alert(
+                    "The image could not be saved. Please choose a smaller image."
+                );
+
+                return;
+            }
+
+
+            /* ---------- Display immediately ---------- */
 
             const image =
                 document.getElementById(
@@ -1677,9 +1784,19 @@ function uploadProfileImage() {
             if (image) {
 
                 image.src =
-                    e.target.result;
+                    imageData;
 
             }
+
+        };
+
+
+    reader.onerror =
+        function () {
+
+            alert(
+                "Could not read the selected image."
+            );
 
         };
 
@@ -1697,17 +1814,66 @@ window.uploadProfileImage =
 
 /* =========================================================
    COVER IMAGE
-   ========================================================= */
+========================================================= */
 
 function uploadCoverImage() {
 
-    const file =
+    const currentUser =
+        auth.currentUser;
+
+
+    if (!currentUser) {
+
+        alert(
+            "Please login first."
+        );
+
+        return;
+    }
+
+
+    const input =
         document.getElementById(
             "coverInput"
-        ).files[0];
+        );
+
+
+    if (!input) return;
+
+
+    const file =
+        input.files?.[0];
 
 
     if (!file) return;
+
+
+    if (
+        !file.type.startsWith("image/")
+    ) {
+
+        alert(
+            "Please select an image file."
+        );
+
+        input.value = "";
+
+        return;
+    }
+
+
+    if (
+        file.size > 3 * 1024 * 1024
+    ) {
+
+        alert(
+            "Please choose an image smaller than 3 MB."
+        );
+
+        input.value = "";
+
+        return;
+    }
 
 
     const reader =
@@ -1717,10 +1883,35 @@ function uploadCoverImage() {
     reader.onload =
         function (e) {
 
-            localStorage.setItem(
-                "coverImage",
-                e.target.result
-            );
+            const imageData =
+                e.target.result;
+
+
+            const coverImageKey =
+                "coverImage_" +
+                currentUser.uid;
+
+
+            try {
+
+                localStorage.setItem(
+                    coverImageKey,
+                    imageData
+                );
+
+            } catch (error) {
+
+                console.error(
+                    "Could not save cover image:",
+                    error
+                );
+
+                alert(
+                    "The cover image could not be saved. Please choose a smaller image."
+                );
+
+                return;
+            }
 
 
             const image =
@@ -1732,9 +1923,19 @@ function uploadCoverImage() {
             if (image) {
 
                 image.src =
-                    e.target.result;
+                    imageData;
 
             }
+
+        };
+
+
+    reader.onerror =
+        function () {
+
+            alert(
+                "Could not read the selected image."
+            );
 
         };
 
@@ -1752,28 +1953,12 @@ window.uploadCoverImage =
 
 /* =========================================================
    UNIBUY - WHATSAPP CONTACT SYSTEM
-   ========================================================= */
-
-/*
-   Flow:
-
-   Product
-      ↓
-   Contact Seller
-      ↓
-   messages.html?product=PRODUCT_ID
-      ↓
-   Get seller from Firebase
-      ↓
-   Get seller WhatsApp number
-      ↓
-   Open WhatsApp
-*/
+========================================================= */
 
 
 /* =========================================================
    START MESSAGES PAGE
-   ========================================================= */
+========================================================= */
 
 async function initMessagesPage(user) {
 
@@ -1809,10 +1994,6 @@ async function initMessagesPage(user) {
     }
 
 
-    /*
-       No Firebase conversations.
-    */
-
     if (conversationList) {
 
         conversationList.innerHTML =
@@ -1841,7 +2022,7 @@ async function initMessagesPage(user) {
 
 /* =========================================================
    CONTACT SELLER FROM PRODUCT
-   ========================================================= */
+========================================================= */
 
 async function contactSellerFromProduct(
     currentUser,
@@ -1849,8 +2030,6 @@ async function contactSellerFromProduct(
 ) {
 
     try {
-
-        /* ---------- Get product ---------- */
 
         const productRef =
             doc(
@@ -1879,8 +2058,6 @@ async function contactSellerFromProduct(
         const product =
             productSnap.data();
 
-
-        /* ---------- Find seller ---------- */
 
         let sellerUid =
             product.sellerUid ||
@@ -1948,9 +2125,7 @@ async function contactSellerFromProduct(
 
 
             const sellerSnapshot =
-                await getDocs(
-                    sellerQuery
-                );
+                await getDocs(sellerQuery);
 
 
             if (
@@ -1964,8 +2139,6 @@ async function contactSellerFromProduct(
 
         }
 
-
-        /* ---------- Seller not found ---------- */
 
         if (!sellerUid) {
 
@@ -1991,8 +2164,6 @@ async function contactSellerFromProduct(
             return;
         }
 
-
-        /* ---------- Open WhatsApp ---------- */
 
         await openSellerWhatsApp(
             sellerUid,
@@ -2023,7 +2194,7 @@ async function contactSellerFromProduct(
 
 /* =========================================================
    OPEN SELLER WHATSAPP
-   ========================================================= */
+========================================================= */
 
 async function openSellerWhatsApp(
     sellerUid,
@@ -2031,8 +2202,6 @@ async function openSellerWhatsApp(
 ) {
 
     try {
-
-        /* ---------- Get seller ---------- */
 
         const sellerRef =
             doc(
@@ -2062,13 +2231,6 @@ async function openSellerWhatsApp(
             sellerSnap.data();
 
 
-        /*
-           Main field is now "phone".
-
-           Older field names are kept as fallbacks
-           so existing users still work.
-        */
-
         let phone =
             seller.phone ||
             seller.whatsapp ||
@@ -2080,8 +2242,6 @@ async function openSellerWhatsApp(
             "";
 
 
-        /* ---------- No phone ---------- */
-
         if (!phone) {
 
             alert(
@@ -2092,27 +2252,14 @@ async function openSellerWhatsApp(
         }
 
 
-        /*
-           Remove:
-           +
-           spaces
-           brackets
-           dashes
-           etc.
-        */
+        /* ---------- Clean phone number ---------- */
 
         phone =
             String(phone)
                 .replace(/\D/g, "");
 
 
-        /*
-           South Africa:
-
-           0781234567
-                ↓
-           27781234567
-        */
+        /* ---------- South Africa ---------- */
 
         if (
             phone.startsWith("0")
@@ -2124,8 +2271,6 @@ async function openSellerWhatsApp(
 
         }
 
-
-        /* ---------- Validate phone ---------- */
 
         if (
             phone.length < 10
@@ -2195,8 +2340,6 @@ async function openSellerWhatsApp(
         );
 
 
-        /* ---------- Open WhatsApp ---------- */
-
         window.location.href =
             whatsappURL;
 
@@ -2224,7 +2367,7 @@ async function openSellerWhatsApp(
 
 /* =========================================================
    DIRECT CONTACT FUNCTION
-   ========================================================= */
+========================================================= */
 
 async function contactSellerOnWhatsApp(
     product
@@ -2377,10 +2520,9 @@ async function contactSellerOnWhatsApp(
 }
 
 
-
 /* =========================================================
    GLOBAL WHATSAPP FUNCTIONS
-   ========================================================= */
+========================================================= */
 
 window.contactSellerOnWhatsApp =
     contactSellerOnWhatsApp;
@@ -2392,3 +2534,34 @@ window.contactSellerFromProduct =
 
 window.openSellerWhatsApp =
     openSellerWhatsApp;
+
+
+/* =========================================================
+   OPTIONAL MESSAGES PAGE INITIALIZATION
+========================================================= */
+
+if (
+    window.location.pathname.endsWith(
+        "messages.html"
+    )
+) {
+
+    onAuthStateChanged(
+        auth,
+        (user) => {
+
+            if (user) {
+
+                initMessagesPage(user);
+
+            } else {
+
+                window.location.href =
+                    "login.html";
+
+            }
+
+        }
+    );
+
+}
