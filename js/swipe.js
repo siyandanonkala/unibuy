@@ -624,6 +624,14 @@ window.UniBuySwipe = (function () {
 
         if (action === "share") {
 
+            const shareUrl =
+                window.location.origin +
+                window.location.pathname +
+                "?product=" +
+                encodeURIComponent(
+                    product.id
+                );
+
             const shareData = {
 
                 title:
@@ -636,7 +644,10 @@ window.UniBuySwipe = (function () {
                     formatPrice(
                         product.price
                     ) +
-                    " on UniBuy"
+                    " on UniBuy",
+
+                url:
+                    shareUrl
 
             };
 
@@ -650,12 +661,38 @@ window.UniBuySwipe = (function () {
                     function () {}
                 );
 
+            } else if (
+                navigator.clipboard &&
+                navigator.clipboard.writeText
+            ) {
+
+                navigator.clipboard.writeText(
+                    shareUrl
+                ).then(
+                    function () {
+
+                        showToast(
+                            toastEl,
+                            "Link copied to clipboard"
+                        );
+                    }
+                ).catch(
+                    function () {
+
+                        showToast(
+                            toastEl,
+                            "Share: " +
+                            shareUrl
+                        );
+                    }
+                );
+
             } else {
 
                 showToast(
                     toastEl,
                     "Share: " +
-                    shareData.text
+                    shareUrl
                 );
 
             }

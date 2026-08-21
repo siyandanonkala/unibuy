@@ -380,6 +380,30 @@ document.addEventListener(
         }
 
 
+        const sharedProductId =
+            params.get("product");
+
+        if (sharedProductId) {
+
+            const sharedIndex =
+                products.findIndex(
+                    function (p) {
+
+                        return p.id ===
+                            sharedProductId;
+                    }
+                );
+
+            if (sharedIndex !== -1) {
+
+                openProduct(
+                    sharedIndex,
+                    products
+                );
+            }
+        }
+
+
         if (searchInput) {
 
             searchInput.addEventListener(
